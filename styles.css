@@ -1,0 +1,364 @@
+:root {
+  --green-dark: #0f3b26;
+  --green: #2b7a3c;
+  --green-light: #e9efe9;
+  --red: #c0392b;
+  --ink: #16241c;
+  --muted: #6b7c72;
+  --border: #dbe3dd;
+  --bg: #f5f7f5;
+  --card-bg: #ffffff;
+  --radius: 14px;
+  --shadow: 0 2px 10px rgba(15, 59, 38, 0.08);
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Saira Condensed", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+header.app-header {
+  background: var(--green-dark);
+  color: #fff;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+header.app-header img {
+  height: 38px;
+  width: auto;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+}
+
+header.app-header h1 {
+  font-size: 1.3rem;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+header.app-header nav {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+header.app-header nav a {
+  color: #fff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+
+header.app-header nav a.active {
+  background: #fff;
+  color: var(--green-dark);
+  font-weight: 700;
+}
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: var(--green-dark);
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="password"],
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.row > .field {
+  flex: 1 1 200px;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-weight: 700;
+  background: var(--green);
+  color: #fff;
+  transition: transform 0.05s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button.secondary {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
+button.danger {
+  background: var(--red);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.canvas-wrap {
+  display: flex;
+  justify-content: center;
+  background: #1a1a1a;
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: auto;
+}
+
+.canvas-wrap canvas {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.scorer-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.scorer-row input {
+  flex: 1;
+}
+
+.scorer-row button {
+  flex: 0 0 auto;
+  background: var(--red);
+  padding: 8px 14px;
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: -8px;
+  margin-bottom: 14px;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chip {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.chip.active {
+  background: var(--green-dark);
+  color: #fff;
+  border-color: var(--green-dark);
+}
+
+.fixture-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fixture-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fixture-item .meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-badge.geplant {
+  background: #fdf3d6;
+  color: #8a6d1a;
+}
+
+.status-badge.gespielt {
+  background: #e1f2e4;
+  color: #256d34;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.photo-grid .photo {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  aspect-ratio: 4/5;
+  background: #ddd;
+}
+
+.photo-grid .photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-grid .photo.selected {
+  border-color: var(--green);
+}
+
+textarea#captionOutput {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+
+/* ---- Passcode-Gate ---- */
+
+#gateOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--green-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+#gateOverlay .card {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+
+#gateOverlay img {
+  height: 60px;
+  margin-bottom: 12px;
+}
+
+#gateError {
+  color: var(--red);
+  font-weight: 600;
+  min-height: 1.2em;
+  margin-top: 8px;
+}
+
+body.gate-locked main,
+body.gate-locked header.app-header {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: 14px;
+  }
+  .card {
+    padding: 16px;
+  }
+}
