@@ -312,6 +312,45 @@ button:disabled {
   border-color: var(--green);
 }
 
+.quick-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.quick-post-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-post-row .quick-post-team {
+  flex: 0 0 84px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+.quick-post-row button {
+  flex: 1 1 200px;
+}
+
+.quick-post-status {
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 1.4em;
+  margin-top: 6px;
+}
+
+.quick-post-status.success {
+  color: var(--green);
+}
+
+.quick-post-status.error {
+  color: var(--red);
+}
+
 textarea#captionOutput {
   font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 0.95rem;

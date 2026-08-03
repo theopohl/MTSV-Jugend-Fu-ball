@@ -67,12 +67,19 @@ Wenn das ohne Fehlermeldung durchläuft, ist die Datenbank fertig.
    supabaseAnonKey: "eyJ...dein-key...",
    ```
 
-4. Trage außerdem einen eigenen **Passcode** ein (frei wählbar), den sich alle
-   Trainer merken:
+4. Trage außerdem zwei eigene **Passcodes** ein (frei wählbar):
+   - `passcode` für die Trainer-Seite (`trainer.html`) – den bekommen alle Trainer.
+   - `adminPasscode` für die Generator-Seite (`index.html`) – den bekommen nur
+     die Personen, die fertige Posts erzeugen dürfen.
 
    ```js
    passcode: "mtsv2026",
+   adminPasscode: "mtsv-admin-2026",
    ```
+
+   Beide Codes schalten nur die jeweilige Seite frei; wer nur den
+   Trainer-Passcode kennt, kommt damit **nicht** in den Generator (siehe
+   Grenzen weiter unten – es ist trotzdem kein echter Zugriffsschutz).
 
 > Der `anon key` ist bei Supabase **bewusst öffentlich** und kein Geheimnis –
 > er gehört nicht in eine `.env`-Datei, sondern darf im Frontend-Code stehen.
@@ -141,16 +148,31 @@ schützt die Datenbank selbst nicht. Das bedeutet konkret:
 
 - Wer den Supabase-`anon key` kennt (er steht offen in `config.js` /
   im Quellcode der Webseite), kann theoretisch direkt über die Supabase-API
-  auf die Tabellen zugreifen, **ohne** den Passcode zu kennen.
+  auf die Tabellen zugreifen, **ohne** einen der beiden Passcodes zu kennen.
 - Der Passcode verhindert nur, dass zufällige Besucher der Web-Adresse ohne
-  Weiteres die Trainer-Oberfläche sehen und bedienen – er ist **kein
-  Sicherheitsmechanismus gegen gezielte Angriffe**.
+  Weiteres die Trainer- oder Generator-Oberfläche sehen und bedienen – er ist
+  **kein Sicherheitsmechanismus gegen gezielte Angriffe**.
 - Für die Daten dieser App (Spielpläne, Ergebnisse, Mannschaftsfotos,
   Gegner-Logos) ist das ein bewusst in Kauf genommenes, geringes Risiko, da es
   sich um ohnehin öffentliche Vereinsinformationen handelt.
 
+**Trainer- vs. Generator-Passcode (`passcode` / `adminPasscode`):** Das ist
+ebenfalls nur eine leichte, optische Trennung im Browser, **kein echtes
+Rechtesystem**. `trainer.html` verlangt `passcode`, `index.html` verlangt
+`adminPasscode`, und beide Freischaltungen werden getrennt in
+`sessionStorage` gemerkt. Das verhindert, dass jemand mit nur dem
+Trainer-Passcode versehentlich (oder absichtlich per Klick auf „Generator")
+in die Oberfläche des Generators kommt. Es verhindert **nicht**, dass
+jemand, der den Supabase-`anon`/`publishable`-Key kennt, direkt über die
+API dieselben Daten liest oder schreibt, die auch der Generator nutzt – dafür
+gibt es in der Datenbank keine Unterscheidung zwischen „Trainer" und
+„Admin". Für eine echte Trennung der Rechte bräuchte es Supabase-Auth
+(echte Nutzer-Logins) mit rollenbasierten RLS-Policies statt eines
+gemeinsamen `anon`-Keys – das ist mit dieser einfachen Version bewusst nicht
+umgesetzt.
+
 Falls dir das nicht reicht (z. B. wenn sensiblere Daten dazukommen sollten),
-müsste man auf echte Supabase-Auth-Logins mit striktes RLS pro Nutzer
+müsste man auf echte Supabase-Auth-Logins mit striktem RLS pro Nutzer
 umstellen – das ist mit dieser einfachen Version bewusst nicht umgesetzt.
 
 ---
@@ -160,7 +182,7 @@ umstellen – das ist mit dieser einfachen Version bewusst nicht umgesetzt.
 ```
 index.html            Generator (Admin-Seite): Post erzeugen, Spielplan-Import
 trainer.html           Trainer-Eingabe: Ergebnis, Fotos, Gegner
-config.js               Supabase-Zugangsdaten + Passcode + Design-Konstanten
+config.js               Supabase-Zugangsdaten + Passcodes (Trainer/Admin) + Design-Konstanten
 styles.css              Gemeinsames Erscheinungsbild
 manifest.json, sw.js    PWA (installierbar, offline-fähig)
 js/
