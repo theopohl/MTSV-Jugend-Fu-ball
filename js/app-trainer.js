@@ -22,6 +22,10 @@
     upcomingList: document.getElementById("upcomingList"),
     photoUpload: document.getElementById("photoUpload"),
     teamPhotoGrid: document.getElementById("teamPhotoGrid"),
+    opponentSelect: document.getElementById("opponentSelect"),
+    refreshOpponentsBtn: document.getElementById("refreshOpponentsBtn"),
+    opponentNameField: document.getElementById("opponentNameField"),
+    opponentLogoLabel: document.getElementById("opponentLogoLabel"),
     newOpponentName: document.getElementById("newOpponentName"),
     newOpponentLogo: document.getElementById("newOpponentLogo"),
     createOpponentBtn: document.getElementById("createOpponentBtn"),
@@ -29,10 +33,16 @@
     newFixtureForm: document.getElementById("newFixtureForm"),
   };
 
+  const NEW_OPPONENT_VALUE = "__new__";
   let opponentsCache = null;
 
-  async function getOrCreateOpponent(name) {
+  async function ensureOpponentsCache() {
     if (!opponentsCache) opponentsCache = await window.Db.getOpponents();
+    return opponentsCache;
+  }
+
+  async function getOrCreateOpponent(name) {
+    await ensureOpponentsCache();
     const trimmed = name.trim();
     let existing = opponentsCache.find(
       (o) => o.name.toLowerCase() === trimmed.toLowerCase()
@@ -42,6 +52,51 @@
     opponentsCache.push(created);
     return created;
   }
+
+  // ---- Gegner anlegen / Logo pflegen ------------------------------------
+
+  async function loadOpponentSelect(selectId) {
+    opponentsCache = await window.Db.getOpponents();
+    el.opponentSelect.innerHTML = "";
+
+    const newOpt = document.createElement("option");
+    newOpt.value = NEW_OPPONENT_VALUE;
+    newOpt.textContent = "+ neuer Gegner";
+    el.opponentSelect.appendChild(newOpt);
+
+    opponentsCache.forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.id;
+      opt.textContent = o.name;
+      el.opponentSelect.appendChild(opt);
+    });
+
+    el.opponentSelect.value =
+      selectId && opponentsCache.some((o) => o.id === selectId) ? selectId : NEW_OPPONENT_VALUE;
+    updateOpponentFormMode();
+  }
+
+  function updateOpponentFormMode() {
+    const isNew = el.opponentSelect.value === NEW_OPPONENT_VALUE;
+    el.opponentNameField.style.display = isNew ? "" : "none";
+    el.opponentLogoLabel.textContent = isNew ? "Logo (optional)" : "Logo hinzufügen/ersetzen (optional)";
+    el.createOpponentBtn.textContent = isNew ? "Gegner speichern" : "Logo speichern";
+    el.newOpponentName.value = "";
+    el.newOpponentLogo.value = "";
+    el.createOpponentMsg.textContent = "";
+  }
+
+  el.opponentSelect.addEventListener("change", updateOpponentFormMode);
+
+  el.refreshOpponentsBtn.addEventListener("click", async () => {
+    el.refreshOpponentsBtn.disabled = true;
+    try {
+      const current = el.opponentSelect.value;
+      await loadOpponentSelect(current !== NEW_OPPONENT_VALUE ? current : null);
+    } finally {
+      el.refreshOpponentsBtn.disabled = false;
+    }
+  });
 
   function paramTeamSlug() {
     return new URLSearchParams(location.search).get("team");
@@ -72,6 +127,9 @@
     await refreshNextMatch();
     await refreshUpcoming();
     await refreshPhotos();
+    // Gegner sind mannschaftsübergreifend – Dropdown bei jedem Wechsel frisch halten.
+    const current = el.opponentSelect.value;
+    await loadOpponentSelect(current && current !== NEW_OPPONENT_VALUE ? current : null);
   }
 
   async function refreshNextMatch() {
@@ -220,13 +278,44 @@
   });
 
   el.createOpponentBtn.addEventListener("click", async () => {
-    const name = el.newOpponentName.value.trim();
-    if (!name) return;
-    const logoFile = el.newOpponentLogo.files[0] || null;
-    await window.Db.createOpponent({ name, logoFile });
-    el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
-    el.newOpponentName.value = "";
-    el.newOpponentLogo.value = "";
+    el.createOpponentBtn.disabled = true;
+    try {
+      if (el.opponentSelect.value === NEW_OPPONENT_VALUE) {
+        const name = el.newOpponentName.value.trim();
+        if (!name) {
+          el.createOpponentMsg.textContent = "Bitte einen Namen eingeben.";
+          return;
+        }
+        await ensureOpponentsCache();
+        const duplicate = opponentsCache.find(
+          (o) => o.name.toLowerCase() === name.toLowerCase()
+        );
+        if (duplicate) {
+          await loadOpponentSelect(duplicate.id);
+          el.createOpponentMsg.textContent = `Gegner "${name}" existiert bereits – bitte aus der Liste auswählen.`;
+          return;
+        }
+        const logoFile = el.newOpponentLogo.files[0] || null;
+        const created = await window.Db.createOpponent({ name, logoFile });
+        await loadOpponentSelect(created.id);
+        el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
+      } else {
+        const opponent = opponentsCache.find((o) => o.id === el.opponentSelect.value);
+        const logoFile = el.newOpponentLogo.files[0] || null;
+        if (!logoFile) {
+          el.createOpponentMsg.textContent = "Bitte zuerst ein Logo auswählen.";
+          return;
+        }
+        await window.Db.updateOpponentLogo(opponent.id, opponent.name, logoFile);
+        await loadOpponentSelect(opponent.id);
+        el.createOpponentMsg.textContent = `Logo für "${opponent.name}" aktualisiert.`;
+      }
+    } catch (err) {
+      console.error(err);
+      el.createOpponentMsg.textContent = "Fehler: " + err.message;
+    } finally {
+      el.createOpponentBtn.disabled = false;
+    }
   });
 
   el.newFixtureForm.addEventListener("submit", async (e) => {
@@ -249,6 +338,9 @@
     el.newFixtureForm.reset();
     await refreshUpcoming();
     await refreshNextMatch();
+    // Falls dabei per Freitext ein neuer Gegner entstanden ist: Dropdown aktuell halten
+    // und den (neu angelegten oder wiederverwendeten) Gegner vorauswählen.
+    await loadOpponentSelect(opponent.id);
   });
 
   await loadTeams();

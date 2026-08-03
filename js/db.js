@@ -53,6 +53,14 @@ window.Db = (function () {
     return sb().storage.from("opponent-logos").getPublicUrl(path).data.publicUrl;
   }
 
+  async function updateOpponentLogo(opponentId, opponentName, file) {
+    const logo_url = await uploadOpponentLogo(opponentName, file);
+    const rows = await unwrap(
+      sb().from("opponents").update({ logo_url }).eq("id", opponentId).select()
+    );
+    return rows[0];
+  }
+
   // ---- team photos ------------------------------------------------------------
 
   async function getTeamPhotos(teamId) {
@@ -175,6 +183,7 @@ window.Db = (function () {
     getOpponents,
     createOpponent,
     uploadOpponentLogo,
+    updateOpponentLogo,
     getTeamPhotos,
     uploadTeamPhoto,
     deleteTeamPhoto,

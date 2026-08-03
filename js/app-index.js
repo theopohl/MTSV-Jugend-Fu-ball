@@ -27,6 +27,10 @@
     bulkImportInput: document.getElementById("bulkImportInput"),
     bulkImportBtn: document.getElementById("bulkImportBtn"),
     bulkImportResult: document.getElementById("bulkImportResult"),
+    quickPostList: document.getElementById("quickPostList"),
+    quickPostStatus: document.getElementById("quickPostStatus"),
+    quickPostFallbackWrap: document.getElementById("quickPostFallbackWrap"),
+    quickPostFallbackText: document.getElementById("quickPostFallbackText"),
   };
 
   el.canvas.width = window.Renderer.W;
@@ -44,6 +48,125 @@
       el.teamChips.appendChild(chip);
     });
     if (state.teams.length) await selectTeam(state.teams[0]);
+    renderQuickPostButtons();
+  }
+
+  // ---- Schnell-Post -------------------------------------------------------
+
+  function renderQuickPostButtons() {
+    el.quickPostList.innerHTML = "";
+    state.teams.forEach((team) => {
+      const row = document.createElement("div");
+      row.className = "quick-post-row";
+
+      const label = document.createElement("div");
+      label.className = "quick-post-team";
+      label.textContent = team.name;
+      row.appendChild(label);
+
+      const announceBtn = document.createElement("button");
+      announceBtn.type = "button";
+      announceBtn.textContent = "Ankündigung – nächstes Spiel";
+      announceBtn.addEventListener("click", () =>
+        runQuickPost(team, "ankuendigung", announceBtn)
+      );
+      row.appendChild(announceBtn);
+
+      const resultBtn = document.createElement("button");
+      resultBtn.type = "button";
+      resultBtn.className = "secondary";
+      resultBtn.textContent = "Ergebnis – letztes Spiel";
+      resultBtn.addEventListener("click", () =>
+        runQuickPost(team, "ergebnis", resultBtn)
+      );
+      row.appendChild(resultBtn);
+
+      el.quickPostList.appendChild(row);
+    });
+  }
+
+  function setQuickPostStatus(message, kind) {
+    el.quickPostStatus.textContent = message;
+    el.quickPostStatus.className = "quick-post-status" + (kind ? ` ${kind}` : "");
+  }
+
+  function hideQuickPostFallback() {
+    el.quickPostFallbackWrap.style.display = "none";
+    el.quickPostFallbackText.value = "";
+  }
+
+  function showQuickPostFallback(text) {
+    el.quickPostFallbackText.value = text;
+    el.quickPostFallbackWrap.style.display = "";
+    el.quickPostFallbackText.focus();
+    el.quickPostFallbackText.select();
+  }
+
+  async function runQuickPost(team, postType, triggerBtn) {
+    const typeLabel = postType === "ankuendigung" ? "Ankündigung" : "Ergebnis";
+    const originalLabel = triggerBtn.textContent;
+    const allButtons = [...el.quickPostList.querySelectorAll("button")];
+
+    setQuickPostStatus("", null);
+    hideQuickPostFallback();
+    allButtons.forEach((b) => (b.disabled = true));
+    triggerBtn.textContent = "Erstelle …";
+
+    try {
+      const fixture =
+        postType === "ankuendigung"
+          ? await window.Db.getNextFixture(team.id)
+          : await window.Db.getLastPlayedFixture(team.id);
+
+      if (!fixture) {
+        setQuickPostStatus(
+          postType === "ankuendigung"
+            ? `Kein geplantes Spiel für ${team.name}.`
+            : `Kein gespieltes Spiel für ${team.name}.`,
+          "error"
+        );
+        return;
+      }
+
+      let lastFixture = null;
+      let photoUrl = null;
+      if (postType === "ankuendigung") {
+        lastFixture = await window.Db.getLastPlayedFixture(team.id, fixture.date);
+        const photos = await window.Db.getTeamPhotos(team.id);
+        if (photos.length) {
+          photoUrl = photos[Math.floor(Math.random() * photos.length)].url;
+        }
+      }
+
+      const data = buildRenderData(team, postType, fixture, { teamPhoto: photoUrl });
+      const canvas = window.Renderer.createCanvas();
+      await window.Renderer.render(canvas, postType, data);
+
+      const caption =
+        postType === "ergebnis"
+          ? window.Caption.buildErgebnis({ teamName: team.name, fixture })
+          : window.Caption.buildAnkuendigung({ teamName: team.name, fixture, lastFixture });
+
+      await downloadCanvasPng(canvas, team, postType, fixture);
+      const copied = await copyTextToClipboard(caption);
+
+      const opponentName = fixture.opponent ? fixture.opponent.name : "unbekannter Gegner";
+      const copyNote = copied ? "Text kopiert" : "Text unten zum Kopieren bereit";
+      setQuickPostStatus(
+        `${typeLabel} ${team.name} fertig – Bild heruntergeladen, ${copyNote} (${opponentName}, ${fixture.date}).`,
+        "success"
+      );
+
+      if (!copied) {
+        showQuickPostFallback(caption);
+      }
+    } catch (err) {
+      console.error("Schnell-Post-Fehler:", err);
+      setQuickPostStatus(`Fehler beim Erstellen für ${team.name} – bitte erneut versuchen.`, "error");
+    } finally {
+      allButtons.forEach((b) => (b.disabled = false));
+      triggerBtn.textContent = originalLabel;
+    }
   }
 
   async function selectTeam(team) {
@@ -142,13 +265,11 @@
     renderPreview();
   });
 
-  function buildRenderData() {
-    const team = state.team;
-    const fixture = state.fixture;
+  function buildRenderData(team, postType, fixture, extra = {}) {
     if (!team || !fixture) return null;
     const competition = fixture.competition || team.competition;
 
-    if (state.postType === "ergebnis") {
+    if (postType === "ergebnis") {
       return {
         teamName: team.name,
         competition,
@@ -168,12 +289,37 @@
       timeLine: window.Caption.formatTime(fixture.kickoff),
       venueLine: fixture.is_home ? fixture.venue || team.default_venue : `Bei ${fixture.opponent ? fixture.opponent.name : ""}`,
       matchday: fixture.matchday,
-      teamPhoto: state.selectedPhotoUrl,
+      teamPhoto: "teamPhoto" in extra ? extra.teamPhoto : state.selectedPhotoUrl,
     };
   }
 
+  function downloadCanvasPng(canvas, team, postType, fixture) {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const teamSlug = team ? team.slug : "team";
+        const md = fixture ? fixture.matchday || "" : "";
+        a.href = url;
+        a.download = `mtsv-${teamSlug}-${postType}-spieltag${md}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        resolve();
+      }, "image/png");
+    });
+  }
+
+  async function copyTextToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   async function renderPreview() {
-    const data = buildRenderData();
+    const data = buildRenderData(state.team, state.postType, state.fixture);
     if (!data) {
       const ctx = el.canvas.getContext("2d");
       ctx.clearRect(0, 0, el.canvas.width, el.canvas.height);
@@ -197,27 +343,17 @@
   }
 
   el.downloadBtn.addEventListener("click", () => {
-    el.canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const teamSlug = state.team ? state.team.slug : "team";
-      const md = state.fixture ? state.fixture.matchday || "" : "";
-      a.href = url;
-      a.download = `mtsv-${teamSlug}-${state.postType}-spieltag${md}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }, "image/png");
+    downloadCanvasPng(el.canvas, state.team, state.postType, state.fixture);
   });
 
   el.copyCaptionBtn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(el.captionOutput.value);
-      el.copyCaptionBtn.textContent = "Kopiert!";
-      setTimeout(() => (el.copyCaptionBtn.textContent = "Bildtext kopieren"), 1500);
-    } catch (err) {
+    const copied = await copyTextToClipboard(el.captionOutput.value);
+    if (!copied) {
       el.captionOutput.select();
       document.execCommand("copy");
     }
+    el.copyCaptionBtn.textContent = "Kopiert!";
+    setTimeout(() => (el.copyCaptionBtn.textContent = "Bildtext kopieren"), 1500);
   });
 
   // ---- Spielplan-Import -------------------------------------------------

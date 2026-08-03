@@ -71,20 +71,55 @@ window.Caption = (function () {
     return `#MTSVHohenwestedt #${teamHashtag(teamName)} #Jugendfussball #Amateurfussball #Hohenwestedt`;
   }
 
+  // Textbausteine mit mehreren gleichwertigen Formulierungs-Varianten, damit
+  // nicht jeder Post gleich klingt. Struktur/Emojis/Zeilenreihenfolge und
+  // Hashtags bleiben fest – es wird pro Aufruf nur eine Variante zufällig
+  // gewählt.
+  function pickVariant(list) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  const ANNOUNCE_INTRO_VARIANTS = {
+    keinSpiel: [
+      "Die nächste Aufgabe wartet.",
+      "Der nächste Spieltag steht an.",
+      "Jetzt geht's weiter im Spielbetrieb.",
+    ],
+    sieg: (og, pg, opponentName) => [
+      `Nach dem ${og}:${pg}-Sieg gegen ${opponentName} wollen wir nachlegen.`,
+      `Nach dem starken ${og}:${pg} gegen ${opponentName} soll es im gleichen Stil weitergehen.`,
+      `Der ${og}:${pg}-Erfolg gegen ${opponentName} macht Lust auf mehr.`,
+    ],
+    remis: (og, pg, opponentName) => [
+      `Nach dem ${og}:${pg} gegen ${opponentName} greifen wir wieder an.`,
+      `Nach dem Unentschieden (${og}:${pg}) gegen ${opponentName} soll diesmal mehr drin sein.`,
+      `Das ${og}:${pg} gegen ${opponentName} war knapp – jetzt wollen wir nachlegen.`,
+    ],
+    niederlage: (og, pg, opponentName) => [
+      `Nach der ${og}:${pg}-Niederlage gegen ${opponentName} wollen wir zurückschlagen.`,
+      `Das ${og}:${pg} gegen ${opponentName} soll schnell vergessen werden.`,
+      `Nach dem ${og}:${pg} gegen ${opponentName} wollen wir es diesmal besser machen.`,
+    ],
+  };
+
   function announceIntro(lastFixture) {
     if (!lastFixture || !lastFixture.opponent) {
-      return "Die nächste Aufgabe wartet.";
+      return pickVariant(ANNOUNCE_INTRO_VARIANTS.keinSpiel);
     }
     const { own_goals: og, opp_goals: pg } = lastFixture;
     const opponentName = lastFixture.opponent.name;
     const kind = resultKind(og, pg);
-    if (kind === "sieg") {
-      return `Nach dem ${og}:${pg}-Sieg gegen ${opponentName} wollen wir nachlegen.`;
-    }
-    if (kind === "remis") {
-      return `Nach dem ${og}:${pg} gegen ${opponentName} greifen wir wieder an.`;
-    }
-    return `Nach der ${og}:${pg}-Niederlage gegen ${opponentName} wollen wir zurückschlagen.`;
+    return pickVariant(ANNOUNCE_INTRO_VARIANTS[kind](og, pg, opponentName));
+  }
+
+  const ANNOUNCE_OUTRO_VARIANTS = [
+    "Kommt vorbei und unterstützt unsere Mannschaft! 💚",
+    "Wir freuen uns auf euch am Spielfeldrand! 💚",
+    "Kommt vorbei und feuert uns an! 💚",
+  ];
+
+  function announceOutro() {
+    return pickVariant(ANNOUNCE_OUTRO_VARIANTS);
   }
 
   function buildAnkuendigung({ teamName, fixture, lastFixture }) {
@@ -103,16 +138,32 @@ window.Caption = (function () {
       `📍 ${ortLine}`,
       `🏆 ${fixture.competition || ""} · Spieltag ${fixture.matchday || ""}`,
       "",
-      "Kommt vorbei und unterstützt unsere Mannschaft! 💚",
+      announceOutro(),
       "",
       baseHashtags(teamName),
     ].join("\n");
   }
 
+  const RESULT_SENTENCE_VARIANTS = {
+    sieg: (teamName) => [
+      `Ein Sieg für unsere ${teamName}! 💪`,
+      `Drei Punkte für unsere ${teamName}! 💪`,
+      `Stark gemacht, ${teamName}! 💪`,
+    ],
+    remis: () => [
+      "Ein Unentschieden – ein Punkt bleibt in Hohenwestedt.",
+      "Remis – knapp, aber ein Punkt ist eingetütet.",
+      "Geteilte Punkte heute – weiter geht's beim nächsten Mal.",
+    ],
+    niederlage: () => [
+      "Diesmal hat es nicht gereicht – Kopf hoch, weiter geht's!",
+      "Keine Punkte heute, aber der nächste Spieltag kommt bestimmt.",
+      "Nicht der Tag von uns – nächstes Mal wird's besser.",
+    ],
+  };
+
   function resultSentence(kind, teamName) {
-    if (kind === "sieg") return `Ein Sieg für unsere ${teamName}! 💪`;
-    if (kind === "remis") return "Ein Unentschieden – ein Punkt bleibt in Hohenwestedt.";
-    return "Diesmal hat es nicht gereicht – Kopf hoch, weiter geht's!";
+    return pickVariant(RESULT_SENTENCE_VARIANTS[kind](teamName));
   }
 
   function buildErgebnis({ teamName, fixture }) {

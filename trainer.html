@@ -126,7 +126,10 @@
     <h2>Gegner anlegen</h2>
     <div class="field">
       <label for="opponentSelect">Gegner</label>
-      <select id="opponentSelect"></select>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="opponentSelect" style="flex:1;"></select>
+        <button type="button" id="refreshOpponentsBtn" class="secondary" style="flex:0 0 auto;" title="Liste neu laden">↻</button>
+      </div>
     </div>
     <div class="row">
       <div class="field" id="opponentNameField">

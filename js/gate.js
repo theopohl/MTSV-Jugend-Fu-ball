@@ -1,7 +1,26 @@
 // Einfaches Passcode-Gate (client-seitig, siehe README für die Grenzen davon).
+//
+// WICHTIG: Das hier ist nur eine leichte, optische Trennung zwischen
+// "Trainer" (normaler passcode) und "Generator/Admin" (adminPasscode) im
+// Browser. Es ist KEIN echter Zugriffsschutz: Der Supabase anon/publishable
+// Key steht offen in config.js / im Quellcode. Wer diesen Key kennt, kommt
+// über die Supabase-REST-API weiterhin an alle Daten, unabhängig vom
+// Passcode. Für eine echte Trennung der Rechte bräuchte es Supabase-Auth
+// (echte Logins) statt eines gemeinsamen Passcodes. Siehe README, Abschnitt
+// "Grenzen des Passcode-Schutzes".
 
 (function () {
-  const STORAGE_KEY = "mtsv_passcode_ok";
+  // Jede Seite setzt window.GATE_MODE ("trainer" oder "admin") vor dem
+  // Einbinden dieses Skripts. Ohne Angabe wird der normale Trainer-Passcode
+  // verwendet. Jeder Modus hat einen eigenen sessionStorage-Eintrag, damit
+  // ein Freischalten der Trainer-Seite NICHT automatisch den Generator
+  // freischaltet (und umgekehrt).
+  const mode = window.GATE_MODE === "admin" ? "admin" : "trainer";
+  const STORAGE_KEY = "mtsv_passcode_ok_" + mode;
+  const expectedPasscode =
+    mode === "admin" ? window.APP_CONFIG.adminPasscode : window.APP_CONFIG.passcode;
+  const title = mode === "admin" ? "Generator-Zugang" : "Trainer-Zugang";
+  const placeholder = mode === "admin" ? "Admin-Passcode" : "Trainer-Passcode";
 
   function isUnlocked() {
     return sessionStorage.getItem(STORAGE_KEY) === "1";
@@ -17,9 +36,9 @@
     overlay.innerHTML = `
       <div class="card">
         <img src="assets/mtsv-logo.png" alt="MTSV Hohenwestedt" />
-        <h2>Zugang</h2>
+        <h2>${title}</h2>
         <div class="field">
-          <input type="password" id="gatePasscode" placeholder="Passcode" autocomplete="off" />
+          <input type="password" id="gatePasscode" placeholder="${placeholder}" autocomplete="off" />
         </div>
         <button id="gateSubmit">Weiter</button>
         <div id="gateError"></div>
@@ -31,7 +50,7 @@
     const error = overlay.querySelector("#gateError");
 
     function tryUnlock() {
-      if (input.value === window.APP_CONFIG.passcode) {
+      if (input.value === expectedPasscode) {
         unlock();
         document.body.classList.remove("gate-locked");
         overlay.remove();
