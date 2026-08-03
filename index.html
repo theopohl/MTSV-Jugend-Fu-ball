@@ -30,8 +30,26 @@
 </header>
 
 <main>
+  <section class="card" id="quickPostCard">
+    <h2>Schnell-Post</h2>
+    <p class="hint">
+      Ein Klick: Spiel wird automatisch gewählt, Bild heruntergeladen und Bildtext kopiert.
+    </p>
+    <div class="quick-post-list" id="quickPostList"></div>
+    <div class="quick-post-status" id="quickPostStatus" aria-live="polite"></div>
+    <div class="field" id="quickPostFallbackWrap" style="display:none; margin-top:12px;">
+      <label for="quickPostFallbackText">Bildtext (Kopieren war blockiert – bitte manuell kopieren)</label>
+      <textarea id="quickPostFallbackText" rows="10" readonly></textarea>
+    </div>
+  </section>
+
   <section class="card">
-    <h2>1. Mannschaft &amp; Post-Typ</h2>
+    <h2>Feinjustierung</h2>
+    <p class="hint">
+      Falls du für einen Post ein anderes Spiel oder Foto brauchst als die
+      Schnell-Post-Auswahl.
+    </p>
+    <h3 style="margin-top:0;">1. Mannschaft &amp; Post-Typ</h3>
     <div class="chip-list" id="teamChips"></div>
     <div class="chip-list" id="typeChips">
       <div class="chip active" data-type="ankuendigung">Ankündigung</div>
