@@ -273,6 +273,7 @@
       return {
         teamName: team.name,
         competition,
+        opponentName: fixture.opponent ? fixture.opponent.name : "",
         ownGoals: fixture.own_goals,
         oppGoals: fixture.opp_goals,
         opponentLogo: fixture.opponent ? fixture.opponent.logo_url : null,
@@ -285,8 +286,8 @@
       competition,
       opponentName: fixture.opponent ? fixture.opponent.name : "",
       opponentLogo: fixture.opponent ? fixture.opponent.logo_url : null,
-      dateLine: window.Caption.formatDateLong(fixture.date),
-      timeLine: window.Caption.formatTime(fixture.kickoff),
+      date: fixture.date,
+      kickoff: fixture.kickoff,
       venueLine: fixture.is_home ? fixture.venue || team.default_venue : `Bei ${fixture.opponent ? fixture.opponent.name : ""}`,
       matchday: fixture.matchday,
       teamPhoto: "teamPhoto" in extra ? extra.teamPhoto : state.selectedPhotoUrl,

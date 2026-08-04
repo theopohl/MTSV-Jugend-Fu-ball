@@ -91,6 +91,7 @@ Wenn das ohne Fehlermeldung durchläuft, ist die Datenbank fertig.
 Im Ordner [`assets/`](assets) liegen bereits:
 
 - `mtsv-logo.png` – das Vereinslogo
+- `pohl-logo.png` – das Sponsor-Logo für die Sponsorleiste unten auf jedem Post
 - `jersey-bg.png` – die Trikot-Textur für Ergebnis-Posts
 - `icons/` – App-Icons für die PWA
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mtsv-post-generator-v1";
+const CACHE_NAME = "mtsv-post-generator-v2";
 const APP_SHELL = [
   "index.html",
   "trainer.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "js/app-index.js",
   "js/app-trainer.js",
   "assets/mtsv-logo.png",
+  "assets/pohl-logo.png",
   "assets/jersey-bg.png",
   "assets/icons/icon-192.png",
   "assets/icons/icon-512.png",

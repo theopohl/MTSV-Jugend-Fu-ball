@@ -27,7 +27,8 @@ window.APP_CONFIG = {
   club: {
     name: "MTSV Hohenwestedt",
     logo: "assets/mtsv-logo.png",
-    presenter: "POHL",
+    // Sponsor-Logo als Bild (kein getippter Text mehr) für die Sponsorleiste.
+    presenterLogo: "assets/pohl-logo.png",
     defaultVenue: "Sportpark Wilhelmshöhe",
   },
 
@@ -36,10 +37,6 @@ window.APP_CONFIG = {
   colors: {
     jerseyGreen: "#0F3B26",
     cream: "#E9EFE9",
-    mtsvGreen: "#2B7A3C",
-    mtsvRed: "#C0392B",
-    flagGreen: "#2F9457",
-    flagWhite: "#F3F3F3",
-    flagRed: "#B32B2B",
+    sponsorBarDark: "#081E14",
   },
 };
