@@ -21,7 +21,7 @@ window.APP_CONFIG = {
   // oben) – wer nur den normalen "passcode" kennt, kommt hiermit NICHT in
   // den Generator. Für eine echte Rechtetrennung bräuchte es
   // Supabase-Auth-Logins statt eines gemeinsamen Passcodes.
-  adminPasscode: "mtsv-admin-2026",
+  adminPasscode: "mtsv123",
 
   // Vereins- und Design-Konstanten
   club: {
