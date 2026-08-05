@@ -79,26 +79,36 @@ window.Caption = (function () {
     return list[Math.floor(Math.random() * list.length)];
   }
 
+  const ANNOUNCE_HEADER_VARIANTS = (teamName) => [
+    `⚽️ Spieltag für unsere ${teamName}!`,
+    `⚽️ Unsere ${teamName} ist wieder gefordert.`,
+    `⚽️ Nächstes Spiel für die ${teamName} steht an.`,
+  ];
+
+  function announceHeader(teamName) {
+    return pickVariant(ANNOUNCE_HEADER_VARIANTS(teamName));
+  }
+
   const ANNOUNCE_INTRO_VARIANTS = {
     keinSpiel: [
-      "Die nächste Aufgabe wartet.",
-      "Der nächste Spieltag steht an.",
-      "Jetzt geht's weiter im Spielbetrieb.",
+      "Auf geht's – nächstes Spiel, nächste Chance.",
+      "Zeit für die nächsten drei Punkte.",
+      "Die nächste Gelegenheit, Punkte mitzunehmen.",
     ],
     sieg: (og, pg, opponentName) => [
-      `Nach dem ${og}:${pg}-Sieg gegen ${opponentName} wollen wir nachlegen.`,
-      `Nach dem starken ${og}:${pg} gegen ${opponentName} soll es im gleichen Stil weitergehen.`,
-      `Der ${og}:${pg}-Erfolg gegen ${opponentName} macht Lust auf mehr.`,
+      `Nach dem ${og}:${pg} gegen ${opponentName} sind wir heiß auf mehr.`,
+      `Weiter so! Nach dem Sieg gegen ${opponentName} (${og}:${pg}) soll der nächste Erfolg her.`,
+      `Nach dem ${og}:${pg} zuletzt gegen ${opponentName} geht's mit Rückenwind weiter.`,
     ],
     remis: (og, pg, opponentName) => [
-      `Nach dem ${og}:${pg} gegen ${opponentName} greifen wir wieder an.`,
-      `Nach dem Unentschieden (${og}:${pg}) gegen ${opponentName} soll diesmal mehr drin sein.`,
-      `Das ${og}:${pg} gegen ${opponentName} war knapp – jetzt wollen wir nachlegen.`,
+      `Letztes Mal gab's ein ${og}:${pg} gegen ${opponentName} – heute soll mehr drin sein.`,
+      `Nach dem Remis gegen ${opponentName} (${og}:${pg}) wollen wir diesmal die volle Punktzahl.`,
+      `Das ${og}:${pg} gegen ${opponentName} war knapp. Jetzt wird nachgelegt.`,
     ],
     niederlage: (og, pg, opponentName) => [
-      `Nach der ${og}:${pg}-Niederlage gegen ${opponentName} wollen wir zurückschlagen.`,
-      `Das ${og}:${pg} gegen ${opponentName} soll schnell vergessen werden.`,
-      `Nach dem ${og}:${pg} gegen ${opponentName} wollen wir es diesmal besser machen.`,
+      `Die Pleite gegen ${opponentName} (${og}:${pg}) ist abgehakt – jetzt zählt nur das nächste Spiel.`,
+      `Nach dem ${og}:${pg} gegen ${opponentName} heißt's: Kopf hoch und weiter.`,
+      `Das wollen wir nach dem ${og}:${pg} gegen ${opponentName} besser machen.`,
     ],
   };
 
@@ -113,9 +123,9 @@ window.Caption = (function () {
   }
 
   const ANNOUNCE_OUTRO_VARIANTS = [
-    "Kommt vorbei und unterstützt unsere Mannschaft! 💚",
-    "Wir freuen uns auf euch am Spielfeldrand! 💚",
-    "Kommt vorbei und feuert uns an! 💚",
+    "Kommt vorbei, wir freuen uns auf euch! 💚",
+    "Anfeuern erwünscht – wir sehen uns am Platz! 💚",
+    "Support ist immer willkommen, schaut gerne vorbei! 💚",
   ];
 
   function announceOutro() {
@@ -130,7 +140,7 @@ window.Caption = (function () {
       : `Auswärts bei ${opponentName}`;
 
     return [
-      `⚽️ SPIELTAG | MTSV Hohenwestedt ${teamName}`,
+      announceHeader(teamName),
       "",
       announceIntro(lastFixture),
       "",
@@ -144,21 +154,31 @@ window.Caption = (function () {
     ].join("\n");
   }
 
+  const RESULT_HEADER_VARIANTS = (teamName) => [
+    `🏁 Endstand für unsere ${teamName}`,
+    `🏁 Abpfiff – das war's für unsere ${teamName}`,
+    `🏁 Das Spiel unserer ${teamName} ist vorbei`,
+  ];
+
+  function resultHeader(teamName) {
+    return pickVariant(RESULT_HEADER_VARIANTS(teamName));
+  }
+
   const RESULT_SENTENCE_VARIANTS = {
     sieg: (teamName) => [
-      `Ein Sieg für unsere ${teamName}! 💪`,
-      `Drei Punkte für unsere ${teamName}! 💪`,
-      `Stark gemacht, ${teamName}! 💪`,
+      `Verdienter Sieg für unsere ${teamName}! 💪`,
+      `Da geht's mit einem Lächeln nach Hause. 💪`,
+      `Klasse Leistung, weiter so! 💪`,
     ],
     remis: () => [
-      "Ein Unentschieden – ein Punkt bleibt in Hohenwestedt.",
-      "Remis – knapp, aber ein Punkt ist eingetütet.",
-      "Geteilte Punkte heute – weiter geht's beim nächsten Mal.",
+      "Ein Punkt ist mitgenommen – geht in Ordnung.",
+      "Remis heute, nächstes Mal soll's der Sieg werden.",
+      "Schade um die liegen gelassenen Chancen, aber okay so.",
     ],
     niederlage: () => [
-      "Diesmal hat es nicht gereicht – Kopf hoch, weiter geht's!",
-      "Keine Punkte heute, aber der nächste Spieltag kommt bestimmt.",
-      "Nicht der Tag von uns – nächstes Mal wird's besser.",
+      "Heute hat's nicht gereicht, aber Kopf hoch!",
+      "Bitter, aber nächste Woche geht's weiter.",
+      "Nicht unser Tag – nächstes Mal wird's besser.",
     ],
   };
 
@@ -177,7 +197,7 @@ window.Caption = (function () {
     const extra = [scorersLine, fixture.note].filter(Boolean).join("\n");
 
     const lines = [
-      `🏁 ENDSTAND | MTSV Hohenwestedt ${teamName}`,
+      resultHeader(teamName),
       "",
       `MTSV ${fixture.own_goals}:${fixture.opp_goals} ${opponentName}`,
       `🏆 ${fixture.competition || ""} · Spieltag ${fixture.matchday || ""}`,
