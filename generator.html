@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0F3B26" />
+<title>Post-Generator – MTSV Hohenwestedt Jugend</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+<link rel="icon" href="assets/icons/icon-192.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Saira+Condensed:wght@400;600;700;900&display=swap"
+  rel="stylesheet"
+/>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<script src="config.js"></script>
+<script>window.GATE_MODE = "admin";</script>
+<script src="js/gate.js"></script>
+
+<header class="app-header">
+  <img src="assets/mtsv-logo.png" alt="MTSV" />
+  <h1>Post-Generator</h1>
+  <nav>
+    <a href="generator.html" class="active">Generator</a>
+    <a href="index.html">Trainer</a>
+  </nav>
+</header>
+
+<main>
+  <section class="card" id="quickPostCard">
+    <h2>Schnell-Post</h2>
+    <p class="hint">
+      Ein Klick: Spiel wird automatisch gewählt, Bild heruntergeladen und Bildtext kopiert.
+    </p>
+    <div class="quick-post-list" id="quickPostList"></div>
+    <div class="quick-post-status" id="quickPostStatus" aria-live="polite"></div>
+    <div class="field" id="quickPostFallbackWrap" style="display:none; margin-top:12px;">
+      <label for="quickPostFallbackText">Bildtext (Kopieren war blockiert – bitte manuell kopieren)</label>
+      <textarea id="quickPostFallbackText" rows="10" readonly></textarea>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Feinjustierung</h2>
+    <p class="hint">
+      Falls du für einen Post ein anderes Spiel oder Foto brauchst als die
+      Schnell-Post-Auswahl.
+    </p>
+    <h3 style="margin-top:0;">1. Mannschaft &amp; Post-Typ</h3>
+    <div class="chip-list" id="teamChips"></div>
+    <div class="chip-list" id="typeChips">
+      <div class="chip active" data-type="ankuendigung">Ankündigung</div>
+      <div class="chip" data-type="ergebnis">Ergebnis</div>
+    </div>
+
+    <div class="field">
+      <label for="fixtureSelect">Spiel</label>
+      <select id="fixtureSelect"></select>
+    </div>
+  </section>
+
+  <section class="card" id="announceOptions">
+    <h2>2. Hintergrund (Mannschaftsfoto)</h2>
+    <div class="btn-row">
+      <button type="button" id="randomPhotoBtn" class="secondary">Zufälliges Foto</button>
+      <button type="button" id="noPhotoBtn" class="secondary">Kein Foto (Platzhalter)</button>
+    </div>
+    <div class="photo-grid" id="photoGrid"></div>
+  </section>
+
+  <section class="card">
+    <h2>3. Vorschau</h2>
+    <div class="canvas-wrap">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+    <div class="btn-row">
+      <button type="button" id="downloadBtn">PNG herunterladen</button>
+      <button type="button" id="copyCaptionBtn" class="secondary">Bildtext kopieren</button>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label for="captionOutput">Bildtext</label>
+      <textarea id="captionOutput" rows="14" readonly></textarea>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Spielplan-Import</h2>
+    <p class="hint">Einzelnes Spiel anlegen oder ganzen Spielplan als Tabelle einfügen.</p>
+
+    <h3>Einzelnes Spiel</h3>
+    <form id="singleFixtureForm">
+      <div class="row">
+        <div class="field">
+          <label>Spieltag-Nr.</label>
+          <input type="number" name="matchday" min="1" required />
+        </div>
+        <div class="field">
+          <label>Gegner</label>
+          <input type="text" name="opponent" required />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Datum</label>
+          <input type="date" name="date" required />
+        </div>
+        <div class="field">
+          <label>Uhrzeit</label>
+          <input type="time" name="kickoff" required />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Heim/Auswärts</label>
+          <select name="isHome">
+            <option value="true">Heimspiel</option>
+            <option value="false">Auswärts</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Ort (leer = Standard-Heimort)</label>
+          <input type="text" name="venue" placeholder="Sportpark Wilhelmshöhe" />
+        </div>
+      </div>
+      <button type="submit">Spiel anlegen</button>
+    </form>
+
+    <h3 style="margin-top:28px;">Sammel-Import (CSV / eingefügte Tabelle)</h3>
+    <p class="hint">
+      Eine Zeile pro Spiel, Spalten getrennt durch Tab oder Komma:<br />
+      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A)</code>
+    </p>
+    <div class="field">
+      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H"></textarea>
+    </div>
+    <button type="button" id="bulkImportBtn" class="secondary">Spielplan importieren</button>
+    <div id="bulkImportResult" class="hint"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/db.js"></script>
+<script src="js/caption.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/app-index.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+  }
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
-const CACHE_NAME = "mtsv-post-generator-v2";
+const CACHE_NAME = "mtsv-post-generator-v3";
 const APP_SHELL = [
   "index.html",
-  "trainer.html",
+  "generator.html",
   "styles.css",
   "config.js",
   "manifest.json",

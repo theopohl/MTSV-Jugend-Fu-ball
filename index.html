@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0F3B26" />
-<title>Post-Generator – MTSV Hohenwestedt Jugend</title>
+<title>Trainer – MTSV Hohenwestedt Jugend</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
 <link rel="icon" href="assets/icons/icon-192.png" />
@@ -18,81 +18,64 @@
 </head>
 <body>
 <script src="config.js"></script>
-<script>window.GATE_MODE = "admin";</script>
+<script>window.GATE_MODE = "trainer";</script>
 <script src="js/gate.js"></script>
 
 <header class="app-header">
   <img src="assets/mtsv-logo.png" alt="MTSV" />
-  <h1>Post-Generator</h1>
+  <h1>Trainer-Eingabe</h1>
   <nav>
-    <a href="index.html" class="active">Generator</a>
-    <a href="trainer.html">Trainer</a>
+    <a href="generator.html">Generator</a>
+    <a href="index.html" class="active">Trainer</a>
   </nav>
 </header>
 
 <main>
-  <section class="card" id="quickPostCard">
-    <h2>Schnell-Post</h2>
-    <p class="hint">
-      Ein Klick: Spiel wird automatisch gewählt, Bild heruntergeladen und Bildtext kopiert.
-    </p>
-    <div class="quick-post-list" id="quickPostList"></div>
-    <div class="quick-post-status" id="quickPostStatus" aria-live="polite"></div>
-    <div class="field" id="quickPostFallbackWrap" style="display:none; margin-top:12px;">
-      <label for="quickPostFallbackText">Bildtext (Kopieren war blockiert – bitte manuell kopieren)</label>
-      <textarea id="quickPostFallbackText" rows="10" readonly></textarea>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Feinjustierung</h2>
-    <p class="hint">
-      Falls du für einen Post ein anderes Spiel oder Foto brauchst als die
-      Schnell-Post-Auswahl.
-    </p>
-    <h3 style="margin-top:0;">1. Mannschaft &amp; Post-Typ</h3>
+  <section class="card" id="teamSection">
+    <h2>Mannschaft</h2>
     <div class="chip-list" id="teamChips"></div>
-    <div class="chip-list" id="typeChips">
-      <div class="chip active" data-type="ankuendigung">Ankündigung</div>
-      <div class="chip" data-type="ergebnis">Ergebnis</div>
-    </div>
-
-    <div class="field">
-      <label for="fixtureSelect">Spiel</label>
-      <select id="fixtureSelect"></select>
-    </div>
   </section>
 
-  <section class="card" id="announceOptions">
-    <h2>2. Hintergrund (Mannschaftsfoto)</h2>
-    <div class="btn-row">
-      <button type="button" id="randomPhotoBtn" class="secondary">Zufälliges Foto</button>
-      <button type="button" id="noPhotoBtn" class="secondary">Kein Foto (Platzhalter)</button>
-    </div>
-    <div class="photo-grid" id="photoGrid"></div>
+  <section class="card" id="nextMatchCard">
+    <h2>Nächstes Spiel</h2>
+    <div id="nextMatchInfo" class="hint">Lade…</div>
   </section>
 
-  <section class="card">
-    <h2>3. Vorschau</h2>
-    <div class="canvas-wrap">
-      <canvas id="previewCanvas"></canvas>
+  <section class="card" id="resultCard" style="display:none;">
+    <h2>Ergebnis eintragen</h2>
+    <div class="row">
+      <div class="field">
+        <label>Tore MTSV</label>
+        <input type="number" id="ownGoals" min="0" value="0" />
+      </div>
+      <div class="field">
+        <label>Tore Gegner</label>
+        <input type="number" id="oppGoals" min="0" value="0" />
+      </div>
     </div>
-    <div class="btn-row">
-      <button type="button" id="downloadBtn">PNG herunterladen</button>
-      <button type="button" id="copyCaptionBtn" class="secondary">Bildtext kopieren</button>
-    </div>
+
+    <label>Torschützen</label>
+    <p class="hint">
+      Jugendschutz: Bei U16 bitte nur Vorname oder Trikotnummer eintragen, keinen vollen Nachnamen.
+    </p>
+    <div id="scorerRows"></div>
+    <button type="button" id="addScorerBtn" class="secondary">+ Torschütze</button>
+
     <div class="field" style="margin-top:16px;">
-      <label for="captionOutput">Bildtext</label>
-      <textarea id="captionOutput" rows="14" readonly></textarea>
+      <label>Notiz (optional)</label>
+      <textarea id="resultNote" rows="2"></textarea>
     </div>
+
+    <button type="button" id="saveResultBtn" style="margin-top:12px;">Ergebnis speichern</button>
+    <div id="saveResultMsg" class="hint"></div>
   </section>
 
   <section class="card">
-    <h2>Spielplan-Import</h2>
-    <p class="hint">Einzelnes Spiel anlegen oder ganzen Spielplan als Tabelle einfügen.</p>
+    <h2>Kommende Spiele</h2>
+    <div class="fixture-list" id="upcomingList"></div>
 
-    <h3>Einzelnes Spiel</h3>
-    <form id="singleFixtureForm">
+    <h3 style="margin-top:24px;">Neues Spiel anlegen</h3>
+    <form id="newFixtureForm">
       <div class="row">
         <div class="field">
           <label>Spieltag-Nr.</label>
@@ -126,19 +109,47 @@
           <input type="text" name="venue" placeholder="Sportpark Wilhelmshöhe" />
         </div>
       </div>
-      <button type="submit">Spiel anlegen</button>
+      <button type="submit" class="secondary">Spiel anlegen</button>
     </form>
+  </section>
 
-    <h3 style="margin-top:28px;">Sammel-Import (CSV / eingefügte Tabelle)</h3>
-    <p class="hint">
-      Eine Zeile pro Spiel, Spalten getrennt durch Tab oder Komma:<br />
-      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A)</code>
-    </p>
+  <section class="card">
+    <h2>Mannschaftsfotos</h2>
     <div class="field">
-      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H"></textarea>
+      <label for="photoUpload">Foto hochladen</label>
+      <input type="file" id="photoUpload" accept="image/*" />
     </div>
-    <button type="button" id="bulkImportBtn" class="secondary">Spielplan importieren</button>
-    <div id="bulkImportResult" class="hint"></div>
+    <div class="photo-grid" id="teamPhotoGrid"></div>
+  </section>
+
+  <section class="card">
+    <h2>Gegner anlegen</h2>
+    <div class="field">
+      <label for="opponentSelect">Gegner</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="opponentSelect" style="flex:1;"></select>
+        <button type="button" id="refreshOpponentsBtn" class="secondary" style="flex:0 0 auto;" title="Liste neu laden">↻</button>
+      </div>
+    </div>
+    <div class="field" id="opponentLogoPreviewField" style="display:none;">
+      <label>Aktuelles Logo</label>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img id="opponentLogoPreview" alt="" style="display:none; height:56px; width:56px; object-fit:contain; border:1px solid var(--border); border-radius:8px; background:#fff; padding:4px;" />
+        <span id="opponentLogoPreviewEmpty" class="hint" style="margin:0;">Noch kein Logo hinterlegt.</span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" id="opponentNameField">
+        <label>Name</label>
+        <input type="text" id="newOpponentName" />
+      </div>
+      <div class="field">
+        <label id="opponentLogoLabel" for="newOpponentLogo">Logo (optional)</label>
+        <input type="file" id="newOpponentLogo" accept="image/*" />
+      </div>
+    </div>
+    <button type="button" id="createOpponentBtn" class="secondary">Gegner speichern</button>
+    <div id="createOpponentMsg" class="hint"></div>
   </section>
 </main>
 
@@ -146,8 +157,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/db.js"></script>
 <script src="js/caption.js"></script>
-<script src="js/renderer.js"></script>
-<script src="js/app-index.js"></script>
+<script src="js/app-trainer.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));

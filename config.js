@@ -9,18 +9,20 @@ window.APP_CONFIG = {
   supabaseUrl: "https://kffjoqatpqhdzynnrhwv.supabase.co",
   supabaseAnonKey: "sb_publishable_5l2MRLQj0_9fe_IEYa8xFw_RJPeMgSK",
 
-  // Zugangscode für die Trainer-Seite (trainer.html), frei wählbar.
+  // Zugangscode für die Trainer-Seite (index.html – der gemeinsame Link für
+  // alle Trainer), frei wählbar.
   // WICHTIG: Nur eine leichte, optische Zugangssperre im Browser, kein
   // echter Schutz – siehe README "Grenzen des Passcode-Schutzes". Wer den
   // Supabase anon/publishable Key kennt, kommt trotzdem über die API an
   // die Daten.
   passcode: "mtsv2026",
 
-  // Eigener, separater Zugangscode für die Generator-Seite (index.html).
+  // Eigener, separater Zugangscode für die Generator-Seite (generator.html).
   // Trennt Trainer- und Generator-Zugang nur optisch im Browser (siehe
   // oben) – wer nur den normalen "passcode" kennt, kommt hiermit NICHT in
-  // den Generator. Für eine echte Rechtetrennung bräuchte es
-  // Supabase-Auth-Logins statt eines gemeinsamen Passcodes.
+  // den Generator. Der Admin-Code funktioniert zusätzlich auch auf der
+  // Trainer-Seite (Master-Code für beide). Für eine echte Rechtetrennung
+  // bräuchte es Supabase-Auth-Logins statt eines gemeinsamen Passcodes.
   adminPasscode: "mtsv123",
 
   // Vereins- und Design-Konstanten

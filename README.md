@@ -18,8 +18,10 @@ komplett durch die Einrichtung. Das dauert ca. 20–30 Minuten.
 
 ## Was du am Ende hast
 
-- Eine Web-Adresse (z. B. `https://DEINNAME.github.io/DEINREPO/`), die du dir
-  auf dem iPad/iPhone **wie eine App auf den Home-Bildschirm** legen kannst.
+- Eine Web-Adresse (z. B. `https://DEINNAME.github.io/DEINREPO/`) – das ist
+  der **eine Link für alle Trainer** (öffnet direkt die Trainer-Seite, kein
+  Admin-Passcode nötig) –, die du dir auf dem iPad/iPhone **wie eine App auf
+  den Home-Bildschirm** legen kannst.
 - Eine kostenlose Datenbank bei Supabase, in der Spielpläne, Ergebnisse,
   Mannschaftsfotos und Gegner-Logos gespeichert werden – von allen Trainern
   gemeinsam nutzbar.
@@ -68,9 +70,10 @@ Wenn das ohne Fehlermeldung durchläuft, ist die Datenbank fertig.
    ```
 
 4. Trage außerdem zwei eigene **Passcodes** ein (frei wählbar):
-   - `passcode` für die Trainer-Seite (`trainer.html`) – den bekommen alle Trainer.
-   - `adminPasscode` für die Generator-Seite (`index.html`) – den bekommen nur
-     die Personen, die fertige Posts erzeugen dürfen. Der Admin-Code
+   - `passcode` für die Trainer-Seite (`index.html` – der gemeinsame Link,
+     den alle Trainer bekommen).
+   - `adminPasscode` für die Generator-Seite (`generator.html`) – den bekommen
+     nur die Personen, die fertige Posts erzeugen dürfen. Der Admin-Code
      funktioniert zusätzlich auch auf der Trainer-Seite (Master-Code für
      beide Seiten).
 
@@ -79,7 +82,7 @@ Wenn das ohne Fehlermeldung durchläuft, ist die Datenbank fertig.
    adminPasscode: "mtsv-admin-2026",
    ```
 
-   Der Trainer-Passcode schaltet nur `trainer.html` frei; wer nur ihn
+   Der Trainer-Passcode schaltet nur die Trainer-Seite frei; wer nur ihn
    kennt, kommt damit **nicht** in den Generator (siehe
    Grenzen weiter unten – es ist trotzdem kein echter Zugriffsschutz).
 
@@ -113,33 +116,48 @@ weißem Hintergrund, da es auf der weißen Logo-Box platziert wird).
 
 ## Schritt 6: Auf dem iPad/iPhone installieren
 
+Die Adresse aus Schritt 5 (`https://DEINNAME.github.io/DEINREPO/`) ist der
+**eine Link für alle Trainer** – sie öffnet direkt die Trainer-Seite und
+fragt nur den normalen Trainer-Passcode ab, **keinen** Admin-Passcode. Genau
+diesen einen Link kannst du also an alle Trainer weitergeben.
+
 1. Öffne die Adresse aus Schritt 5 in **Safari** auf dem iPad/iPhone.
 2. Tippe auf das Teilen-Symbol (Quadrat mit Pfeil nach oben).
 3. Wähle **Zum Home-Bildschirm**.
 4. Fertig – die App öffnet sich jetzt im Vollbild mit eigenem Icon, wie eine
-   echte App.
+   echte App, direkt auf der Trainer-Seite.
 
-Für einen einzelnen Trainer lohnt sich ein direkter Link mit vorgewählter
-Mannschaft, z. B.:
+Für einen einzelnen Trainer lohnt sich optional ein direkter Link mit
+vorgewählter Mannschaft, z. B.:
 
 ```
-https://DEINNAME.github.io/DEINREPO/trainer.html?team=b-jugend
+https://DEINNAME.github.io/DEINREPO/?team=b-jugend
 ```
 
 (gültige Werte: `a-jugend`, `b-jugend`, `c-jugend`, `d-jugend`)
+
+Der Generator (für fertige Posts, mit Admin-Passcode) ist erreichbar über:
+
+```
+https://DEINNAME.github.io/DEINREPO/generator.html
+```
+
+oder über den „Generator"-Link in der Navigation (fragt dort den
+Admin-Passcode ab, falls noch nicht eingeloggt).
 
 ---
 
 ## Erste Nutzung
 
-1. Öffne `trainer.html` (mit Passcode) und lege über **Spielplan-Import** im
-   Generator (`index.html`) den kompletten Spielplan der Saison an – entweder
-   Spiel für Spiel oder als eingefügte Tabelle (Spieltag, Gegner, Datum,
-   Uhrzeit, Ort, Heim/Auswärts).
-2. Nach jedem Spiel trägt der Trainer auf `trainer.html` das Ergebnis ein.
-3. Im Generator (`index.html`) Mannschaft, Post-Typ (Ankündigung/Ergebnis) und
-   ggf. ein Mannschaftsfoto wählen → Vorschau prüfen → **PNG herunterladen**
-   und **Bildtext kopieren** → beides von Hand bei Instagram hochladen.
+1. Öffne die Trainer-Seite (`index.html`, mit Passcode) und lege über
+   **Spielplan-Import** im Generator (`generator.html`, mit Admin-Passcode)
+   den kompletten Spielplan der Saison an – entweder Spiel für Spiel oder als
+   eingefügte Tabelle (Spieltag, Gegner, Datum, Uhrzeit, Ort, Heim/Auswärts).
+2. Nach jedem Spiel trägt der Trainer auf der Trainer-Seite das Ergebnis ein.
+3. Im Generator (`generator.html`) Mannschaft, Post-Typ (Ankündigung/Ergebnis)
+   und ggf. ein Mannschaftsfoto wählen → Vorschau prüfen → **PNG
+   herunterladen** und **Bildtext kopieren** → beides von Hand bei Instagram
+   hochladen.
 
 ---
 
@@ -161,8 +179,9 @@ schützt die Datenbank selbst nicht. Das bedeutet konkret:
 
 **Trainer- vs. Generator-Passcode (`passcode` / `adminPasscode`):** Das ist
 ebenfalls nur eine leichte, optische Trennung im Browser, **kein echtes
-Rechtesystem**. `trainer.html` akzeptiert sowohl `passcode` als auch
-`adminPasscode`, `index.html` akzeptiert ausschließlich `adminPasscode` – der
+Rechtesystem**. `index.html` (Trainer-Seite, der gemeinsame Link für alle)
+akzeptiert sowohl `passcode` als auch `adminPasscode`, `generator.html`
+akzeptiert ausschließlich `adminPasscode` – der
 Admin-Code ist also ein Master-Code für beide Seiten, während der normale
 Trainer-Code nur die Trainer-Seite freischaltet. Beide Freischaltungen werden
 getrennt in `sessionStorage` gemerkt. Das verhindert, dass jemand mit nur dem
@@ -185,8 +204,8 @@ umstellen – das ist mit dieser einfachen Version bewusst nicht umgesetzt.
 ## Projektstruktur
 
 ```
-index.html            Generator (Admin-Seite): Post erzeugen, Spielplan-Import
-trainer.html           Trainer-Eingabe: Ergebnis, Fotos, Gegner
+index.html            Trainer-Eingabe (gemeinsamer Link für alle): Ergebnis, Fotos, Gegner
+generator.html          Generator (Admin-Seite): Post erzeugen, Spielplan-Import
 config.js               Supabase-Zugangsdaten + Passcodes (Trainer/Admin) + Design-Konstanten
 styles.css              Gemeinsames Erscheinungsbild
 manifest.json, sw.js    PWA (installierbar, offline-fähig)
