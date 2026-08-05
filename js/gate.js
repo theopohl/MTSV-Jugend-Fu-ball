@@ -12,22 +12,36 @@
 (function () {
   // Jede Seite setzt window.GATE_MODE ("trainer" oder "admin") vor dem
   // Einbinden dieses Skripts. Ohne Angabe wird der normale Trainer-Passcode
-  // verwendet. Jeder Modus hat einen eigenen sessionStorage-Eintrag, damit
-  // ein Freischalten der Trainer-Seite NICHT automatisch den Generator
-  // freischaltet (und umgekehrt).
+  // verwendet.
+  //
+  // Rechte-Hierarchie: der normale "passcode" schaltet NUR die Trainer-Seite
+  // frei. Der "adminPasscode" ist ein Master-Code, der sowohl Trainer- als
+  // auch Generator-Seite freischaltet (dafür je einen eigenen
+  // sessionStorage-Eintrag, damit ein Trainer-Passcode allein NICHT auch den
+  // Generator freischaltet).
   const mode = window.GATE_MODE === "admin" ? "admin" : "trainer";
-  const STORAGE_KEY = "mtsv_passcode_ok_" + mode;
-  const expectedPasscode =
-    mode === "admin" ? window.APP_CONFIG.adminPasscode : window.APP_CONFIG.passcode;
-  const title = mode === "admin" ? "Generator-Zugang" : "Trainer-Zugang";
-  const placeholder = mode === "admin" ? "Admin-Passcode" : "Trainer-Passcode";
+  const STORAGE_KEY_TRAINER = "mtsv_passcode_ok_trainer";
+  const STORAGE_KEY_ADMIN = "mtsv_passcode_ok_admin";
+  const storageKey = mode === "admin" ? STORAGE_KEY_ADMIN : STORAGE_KEY_TRAINER;
+  const title = mode === "admin" ? "Generator-Zugang" : "Zugang";
+  const placeholder = "Passcode";
 
   function isUnlocked() {
-    return sessionStorage.getItem(STORAGE_KEY) === "1";
+    return sessionStorage.getItem(storageKey) === "1";
   }
 
-  function unlock() {
-    sessionStorage.setItem(STORAGE_KEY, "1");
+  function checkPasscode(value) {
+    if (value === window.APP_CONFIG.adminPasscode) {
+      // Admin-Code gilt überall: Trainer- und Generator-Seite freischalten.
+      sessionStorage.setItem(STORAGE_KEY_ADMIN, "1");
+      sessionStorage.setItem(STORAGE_KEY_TRAINER, "1");
+      return true;
+    }
+    if (mode === "trainer" && value === window.APP_CONFIG.passcode) {
+      sessionStorage.setItem(STORAGE_KEY_TRAINER, "1");
+      return true;
+    }
+    return false;
   }
 
   function buildOverlay() {
@@ -50,8 +64,7 @@
     const error = overlay.querySelector("#gateError");
 
     function tryUnlock() {
-      if (input.value === expectedPasscode) {
-        unlock();
+      if (checkPasscode(input.value)) {
         document.body.classList.remove("gate-locked");
         overlay.remove();
       } else {

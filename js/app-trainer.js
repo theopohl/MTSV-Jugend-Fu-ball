@@ -26,6 +26,9 @@
     refreshOpponentsBtn: document.getElementById("refreshOpponentsBtn"),
     opponentNameField: document.getElementById("opponentNameField"),
     opponentLogoLabel: document.getElementById("opponentLogoLabel"),
+    opponentLogoPreviewField: document.getElementById("opponentLogoPreviewField"),
+    opponentLogoPreview: document.getElementById("opponentLogoPreview"),
+    opponentLogoPreviewEmpty: document.getElementById("opponentLogoPreviewEmpty"),
     newOpponentName: document.getElementById("newOpponentName"),
     newOpponentLogo: document.getElementById("newOpponentLogo"),
     createOpponentBtn: document.getElementById("createOpponentBtn"),
@@ -84,6 +87,15 @@
     el.newOpponentName.value = "";
     el.newOpponentLogo.value = "";
     el.createOpponentMsg.textContent = "";
+
+    el.opponentLogoPreviewField.style.display = isNew ? "none" : "";
+    if (!isNew) {
+      const opponent = (opponentsCache || []).find((o) => o.id === el.opponentSelect.value);
+      const logoUrl = opponent ? opponent.logo_url : null;
+      el.opponentLogoPreview.src = logoUrl || "";
+      el.opponentLogoPreview.style.display = logoUrl ? "" : "none";
+      el.opponentLogoPreviewEmpty.style.display = logoUrl ? "none" : "";
+    }
   }
 
   el.opponentSelect.addEventListener("change", updateOpponentFormMode);

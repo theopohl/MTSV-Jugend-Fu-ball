@@ -289,6 +289,34 @@ window.Renderer = (function () {
   // Ergebnis-Post
   // -------------------------------------------------------------------------
 
+  // Minute und Name je Seite als kleine, ausgerichtete Tabelle zeichnen:
+  // die Minute steht rechtsbündig in einer festen Spalte, der Name beginnt
+  // danach immer an derselben X-Position – bei mehreren Torschützen bleibt
+  // die Liste dadurch sauber ausgerichtet statt als ein loser Textblock.
+  function drawScorerColumn(ctx, items, anchorX, side, centerY, lineHeight) {
+    if (!items.length) return;
+
+    const minuteTexts = items.map((s) => `${s.minute}'`);
+    const nameTexts = items.map((s) => (s.name || "").toUpperCase());
+    const minuteColWidth = Math.max(...minuteTexts.map((t) => ctx.measureText(t).width));
+    const maxNameWidth = Math.max(...nameTexts.map((t) => ctx.measureText(t).width));
+    const gutter = 12;
+    const blockWidth = minuteColWidth + gutter + maxNameWidth;
+
+    const minuteRightX = side === "left" ? anchorX - blockWidth + minuteColWidth : anchorX + minuteColWidth;
+    const nameLeftX = minuteRightX + gutter;
+
+    const totalH = items.length * lineHeight;
+    let y = centerY - totalH / 2 + lineHeight * 0.75;
+    items.forEach((s, i) => {
+      ctx.textAlign = "right";
+      ctx.fillText(minuteTexts[i], minuteRightX, y);
+      ctx.textAlign = "left";
+      ctx.fillText(nameTexts[i], nameLeftX, y);
+      y += lineHeight;
+    });
+  }
+
   function drawScorers(ctx, scorers, L) {
     const c = COLORS();
     const mid = Math.ceil(scorers.length / 2);
@@ -299,18 +327,8 @@ window.Renderer = (function () {
     ctx.font = `900 ${L.scorersFontSize}px ${FONTS.condensed}`;
     ctx.fillStyle = c.cream;
 
-    const drawColumn = (items, x, align) => {
-      const totalH = items.length * lineHeight;
-      let y = L.scorersCenterY - totalH / 2 + lineHeight * 0.75;
-      ctx.textAlign = align;
-      items.forEach((s) => {
-        ctx.fillText(`${s.minute}' ${(s.name || "").toUpperCase()}`, x, y);
-        y += lineHeight;
-      });
-    };
-
-    drawColumn(leftItems, W * 0.47, "right");
-    drawColumn(rightItems, W * 0.53, "left");
+    drawScorerColumn(ctx, leftItems, W * 0.47, "left", L.scorersCenterY, lineHeight);
+    drawScorerColumn(ctx, rightItems, W * 0.53, "right", L.scorersCenterY, lineHeight);
     ctx.textAlign = "left";
 
     const maxRows = Math.max(leftItems.length, rightItems.length);

@@ -70,15 +70,17 @@ Wenn das ohne Fehlermeldung durchläuft, ist die Datenbank fertig.
 4. Trage außerdem zwei eigene **Passcodes** ein (frei wählbar):
    - `passcode` für die Trainer-Seite (`trainer.html`) – den bekommen alle Trainer.
    - `adminPasscode` für die Generator-Seite (`index.html`) – den bekommen nur
-     die Personen, die fertige Posts erzeugen dürfen.
+     die Personen, die fertige Posts erzeugen dürfen. Der Admin-Code
+     funktioniert zusätzlich auch auf der Trainer-Seite (Master-Code für
+     beide Seiten).
 
    ```js
    passcode: "mtsv2026",
    adminPasscode: "mtsv-admin-2026",
    ```
 
-   Beide Codes schalten nur die jeweilige Seite frei; wer nur den
-   Trainer-Passcode kennt, kommt damit **nicht** in den Generator (siehe
+   Der Trainer-Passcode schaltet nur `trainer.html` frei; wer nur ihn
+   kennt, kommt damit **nicht** in den Generator (siehe
    Grenzen weiter unten – es ist trotzdem kein echter Zugriffsschutz).
 
 > Der `anon key` ist bei Supabase **bewusst öffentlich** und kein Geheimnis –
@@ -159,9 +161,11 @@ schützt die Datenbank selbst nicht. Das bedeutet konkret:
 
 **Trainer- vs. Generator-Passcode (`passcode` / `adminPasscode`):** Das ist
 ebenfalls nur eine leichte, optische Trennung im Browser, **kein echtes
-Rechtesystem**. `trainer.html` verlangt `passcode`, `index.html` verlangt
-`adminPasscode`, und beide Freischaltungen werden getrennt in
-`sessionStorage` gemerkt. Das verhindert, dass jemand mit nur dem
+Rechtesystem**. `trainer.html` akzeptiert sowohl `passcode` als auch
+`adminPasscode`, `index.html` akzeptiert ausschließlich `adminPasscode` – der
+Admin-Code ist also ein Master-Code für beide Seiten, während der normale
+Trainer-Code nur die Trainer-Seite freischaltet. Beide Freischaltungen werden
+getrennt in `sessionStorage` gemerkt. Das verhindert, dass jemand mit nur dem
 Trainer-Passcode versehentlich (oder absichtlich per Klick auf „Generator")
 in die Oberfläche des Generators kommt. Es verhindert **nicht**, dass
 jemand, der den Supabase-`anon`/`publishable`-Key kennt, direkt über die

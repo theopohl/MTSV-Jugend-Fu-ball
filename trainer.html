@@ -131,6 +131,13 @@
         <button type="button" id="refreshOpponentsBtn" class="secondary" style="flex:0 0 auto;" title="Liste neu laden">↻</button>
       </div>
     </div>
+    <div class="field" id="opponentLogoPreviewField" style="display:none;">
+      <label>Aktuelles Logo</label>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img id="opponentLogoPreview" alt="" style="display:none; height:56px; width:56px; object-fit:contain; border:1px solid var(--border); border-radius:8px; background:#fff; padding:4px;" />
+        <span id="opponentLogoPreviewEmpty" class="hint" style="margin:0;">Noch kein Logo hinterlegt.</span>
+      </div>
+    </div>
     <div class="row">
       <div class="field" id="opponentNameField">
         <label>Name</label>
