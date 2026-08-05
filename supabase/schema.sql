@@ -29,7 +29,9 @@ create table if not exists opponents (
 create table if not exists fixtures (
   id           uuid primary key default gen_random_uuid(),
   team_id      uuid not null references teams(id) on delete cascade,
-  matchday     int,                                    -- Spieltag-Nr.
+  type         text not null default 'liga'
+               check (type in ('liga', 'testspiel', 'pokal')), -- Ligaspiele zählen als Spieltag, Test-/Pokalspiele nicht
+  matchday     int,                                    -- Spieltag-Nr. (nur bei type='liga' relevant)
   opponent_id  uuid references opponents(id) on delete set null,
   date         date,                                   -- Spieltermin
   kickoff      time,                                    -- Anstoßzeit
@@ -44,6 +46,14 @@ create table if not exists fixtures (
   note         text,
   updated_at   timestamptz not null default now()
 );
+
+-- Migration für bereits bestehende Installationen (create table if not exists
+-- greift dort nicht mehr): Spalte "type" ergänzen, alle bereits eingetragenen
+-- Spiele gelten als normale Ligaspiele.
+alter table fixtures add column if not exists type text not null default 'liga';
+alter table fixtures drop constraint if exists fixtures_type_check;
+alter table fixtures add constraint fixtures_type_check
+  check (type in ('liga', 'testspiel', 'pokal'));
 
 create table if not exists team_photos (
   id         uuid primary key default gen_random_uuid(),

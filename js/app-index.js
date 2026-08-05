@@ -24,6 +24,8 @@
     copyCaptionBtn: document.getElementById("copyCaptionBtn"),
     captionOutput: document.getElementById("captionOutput"),
     singleFixtureForm: document.getElementById("singleFixtureForm"),
+    singleFixtureType: document.getElementById("singleFixtureType"),
+    singleFixtureMatchdayField: document.getElementById("singleFixtureMatchdayField"),
     bulkImportInput: document.getElementById("bulkImportInput"),
     bulkImportBtn: document.getElementById("bulkImportBtn"),
     bulkImportResult: document.getElementById("bulkImportResult"),
@@ -205,7 +207,7 @@
       const opt = document.createElement("option");
       opt.value = f.id;
       const opponentName = f.opponent ? f.opponent.name : "(kein Gegner)";
-      opt.textContent = `Spieltag ${f.matchday || "?"} · ${opponentName} · ${f.date || ""}`;
+      opt.textContent = `${window.Caption.matchLine(f)} · ${opponentName} · ${f.date || ""}`;
       el.fixtureSelect.appendChild(opt);
     });
 
@@ -273,6 +275,7 @@
       return {
         teamName: team.name,
         competition,
+        type: fixture.type,
         opponentName: fixture.opponent ? fixture.opponent.name : "",
         ownGoals: fixture.own_goals,
         oppGoals: fixture.opp_goals,
@@ -284,6 +287,7 @@
     return {
       teamName: team.name,
       competition,
+      type: fixture.type,
       opponentName: fixture.opponent ? fixture.opponent.name : "",
       opponentLogo: fixture.opponent ? fixture.opponent.logo_url : null,
       date: fixture.date,
@@ -370,24 +374,35 @@
     return created;
   }
 
+  function updateSingleFixtureTypeMode() {
+    const isLiga = el.singleFixtureType.value === "liga";
+    el.singleFixtureMatchdayField.style.display = isLiga ? "" : "none";
+    el.singleFixtureMatchdayField.querySelector("input").required = isLiga;
+  }
+  el.singleFixtureType.addEventListener("change", updateSingleFixtureTypeMode);
+  updateSingleFixtureTypeMode();
+
   el.singleFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.singleFixtureForm);
     const opponent = await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
+    const type = fd.get("type") || "liga";
     await window.Db.createFixture({
       team_id: state.team.id,
-      matchday: Number(fd.get("matchday")),
+      type,
+      matchday: type === "liga" && fd.get("matchday") ? Number(fd.get("matchday")) : null,
       opponent_id: opponent.id,
       date: fd.get("date"),
       kickoff: fd.get("kickoff"),
       venue: fd.get("venue") || (isHome ? state.team.default_venue : opponent.name),
       is_home: isHome,
-      competition: state.team.competition,
+      competition: type === "liga" ? state.team.competition : null,
       status: "geplant",
     });
     el.singleFixtureForm.reset();
+    updateSingleFixtureTypeMode();
     await loadFixtures();
   });
 
@@ -402,6 +417,13 @@
       });
   }
 
+  const BULK_TYPE_MAP = { liga: "liga", testspiel: "testspiel", pokal: "pokal" };
+
+  function parseBulkType(raw) {
+    const key = (raw || "").trim().toLowerCase();
+    return BULK_TYPE_MAP[key] || "liga";
+  }
+
   el.bulkImportBtn.addEventListener("click", async () => {
     if (!state.team) return;
     const rows = parseBulkRows(el.bulkImportInput.value);
@@ -409,18 +431,20 @@
     let failed = 0;
     for (const row of rows) {
       try {
-        const [matchday, opponentName, date, kickoff, venue, homeAway] = row;
+        const [matchday, opponentName, date, kickoff, venue, homeAway, typeRaw] = row;
+        const type = parseBulkType(typeRaw);
         const opponent = await getOrCreateOpponent(opponentName);
         const isHome = (homeAway || "H").toUpperCase().startsWith("H");
         await window.Db.createFixture({
           team_id: state.team.id,
-          matchday: Number(matchday),
+          type,
+          matchday: type === "liga" && matchday ? Number(matchday) : null,
           opponent_id: opponent.id,
           date,
           kickoff,
           venue: venue || (isHome ? state.team.default_venue : opponentName),
           is_home: isHome,
-          competition: state.team.competition,
+          competition: type === "liga" ? state.team.competition : null,
           status: "geplant",
         });
         ok++;

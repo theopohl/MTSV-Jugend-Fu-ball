@@ -171,11 +171,25 @@ window.Renderer = (function () {
     return new Date(y, m - 1, d);
   }
 
-  function formatSmallLine(matchday, dateStr, timeStr) {
+  // Test- und Pokalspiele zählen nicht als Liga-Spieltag – dort erscheint
+  // statt "SPIELTAG N" bzw. der Wettbewerbs-Überschrift die Spielart selbst.
+  function typeLabel(type) {
+    if (type === "testspiel") return "Testspiel";
+    if (type === "pokal") return "Pokalspiel";
+    return null;
+  }
+
+  function matchTypeLabel(type) {
+    const label = typeLabel(type);
+    return label ? label.toUpperCase() : null;
+  }
+
+  function formatSmallLine(matchday, dateStr, timeStr, type) {
     const d = parseDate(dateStr);
     const dateBit = d ? `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}. ${MONTHS[d.getMonth()]}` : "";
     const timeBit = timeStr ? `${timeStr.slice(0, 5)} UHR` : "";
-    return [`SPIELTAG ${matchday || "?"}`, dateBit, timeBit].filter(Boolean).join(" · ");
+    const matchBit = matchTypeLabel(type) || `SPIELTAG ${matchday || "?"}`;
+    return [matchBit, dateBit, timeBit].filter(Boolean).join(" · ");
   }
 
   // -------------------------------------------------------------------------
@@ -348,7 +362,8 @@ window.Renderer = (function () {
     const jersey = await loadImage(window.APP_CONFIG.jerseyBg);
     ctx.drawImage(jersey, 0, 0, W, H);
 
-    const tagText = data.competition ? `${data.teamName} · ${data.competition}` : data.teamName;
+    const tagSuffix = typeLabel(data.type) || data.competition;
+    const tagText = tagSuffix ? `${data.teamName} · ${tagSuffix}` : data.teamName;
     drawTeamTag(ctx, tagText);
 
     ctx.fillStyle = c.cream;
@@ -469,14 +484,14 @@ window.Renderer = (function () {
 
     drawTeamTag(ctx, data.teamName);
 
-    const smallLine = formatSmallLine(data.matchday, data.date, data.kickoff);
+    const smallLine = formatSmallLine(data.matchday, data.date, data.kickoff, data.type);
     ctx.fillStyle = "#FFFFFF";
     ctx.font = `700 ${L.smallLineFontSize}px ${FONTS.condensed}`;
     ctx.textAlign = "center";
     drawLetterSpaced(ctx, smallLine, W / 2, L.smallLineCenterY, 1.5, "center");
     ctx.textAlign = "left";
 
-    drawHeadline(ctx, data.competition || "Spieltag", L);
+    drawHeadline(ctx, typeLabel(data.type) || data.competition || "Spieltag", L);
 
     ctx.fillStyle = c.cream;
     ctx.font = `600 ${L.venueFontSize}px ${FONTS.condensed}`;

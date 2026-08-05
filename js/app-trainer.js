@@ -22,7 +22,7 @@
     upcomingList: document.getElementById("upcomingList"),
     photoUpload: document.getElementById("photoUpload"),
     teamPhotoGrid: document.getElementById("teamPhotoGrid"),
-    opponentSelect: document.getElementById("opponentSelect"),
+    opponentChipList: document.getElementById("opponentChipList"),
     refreshOpponentsBtn: document.getElementById("refreshOpponentsBtn"),
     opponentNameField: document.getElementById("opponentNameField"),
     opponentLogoLabel: document.getElementById("opponentLogoLabel"),
@@ -34,10 +34,13 @@
     createOpponentBtn: document.getElementById("createOpponentBtn"),
     createOpponentMsg: document.getElementById("createOpponentMsg"),
     newFixtureForm: document.getElementById("newFixtureForm"),
+    newFixtureType: document.getElementById("newFixtureType"),
+    newFixtureMatchdayField: document.getElementById("newFixtureMatchdayField"),
   };
 
   const NEW_OPPONENT_VALUE = "__new__";
   let opponentsCache = null;
+  let selectedOpponentId = NEW_OPPONENT_VALUE;
 
   async function ensureOpponentsCache() {
     if (!opponentsCache) opponentsCache = await window.Db.getOpponents();
@@ -60,27 +63,38 @@
 
   async function loadOpponentSelect(selectId) {
     opponentsCache = await window.Db.getOpponents();
-    el.opponentSelect.innerHTML = "";
+    selectedOpponentId =
+      selectId && opponentsCache.some((o) => o.id === selectId) ? selectId : NEW_OPPONENT_VALUE;
+    renderOpponentChips();
+    updateOpponentFormMode();
+  }
 
-    const newOpt = document.createElement("option");
-    newOpt.value = NEW_OPPONENT_VALUE;
-    newOpt.textContent = "+ neuer Gegner";
-    el.opponentSelect.appendChild(newOpt);
+  function renderOpponentChips() {
+    el.opponentChipList.innerHTML = "";
+
+    const newChip = document.createElement("div");
+    newChip.className = "chip" + (selectedOpponentId === NEW_OPPONENT_VALUE ? " active" : "");
+    newChip.textContent = "+ neuer Gegner";
+    newChip.addEventListener("click", () => selectOpponent(NEW_OPPONENT_VALUE));
+    el.opponentChipList.appendChild(newChip);
 
     opponentsCache.forEach((o) => {
-      const opt = document.createElement("option");
-      opt.value = o.id;
-      opt.textContent = o.name;
-      el.opponentSelect.appendChild(opt);
+      const chip = document.createElement("div");
+      chip.className = "chip" + (o.id === selectedOpponentId ? " active" : "");
+      chip.textContent = o.name;
+      chip.addEventListener("click", () => selectOpponent(o.id));
+      el.opponentChipList.appendChild(chip);
     });
+  }
 
-    el.opponentSelect.value =
-      selectId && opponentsCache.some((o) => o.id === selectId) ? selectId : NEW_OPPONENT_VALUE;
+  function selectOpponent(id) {
+    selectedOpponentId = id;
+    renderOpponentChips();
     updateOpponentFormMode();
   }
 
   function updateOpponentFormMode() {
-    const isNew = el.opponentSelect.value === NEW_OPPONENT_VALUE;
+    const isNew = selectedOpponentId === NEW_OPPONENT_VALUE;
     el.opponentNameField.style.display = isNew ? "" : "none";
     el.opponentLogoLabel.textContent = isNew ? "Logo (optional)" : "Logo hinzufügen/ersetzen (optional)";
     el.createOpponentBtn.textContent = isNew ? "Gegner speichern" : "Logo speichern";
@@ -90,7 +104,7 @@
 
     el.opponentLogoPreviewField.style.display = isNew ? "none" : "";
     if (!isNew) {
-      const opponent = (opponentsCache || []).find((o) => o.id === el.opponentSelect.value);
+      const opponent = (opponentsCache || []).find((o) => o.id === selectedOpponentId);
       const logoUrl = opponent ? opponent.logo_url : null;
       el.opponentLogoPreview.src = logoUrl || "";
       el.opponentLogoPreview.style.display = logoUrl ? "" : "none";
@@ -98,12 +112,10 @@
     }
   }
 
-  el.opponentSelect.addEventListener("change", updateOpponentFormMode);
-
   el.refreshOpponentsBtn.addEventListener("click", async () => {
     el.refreshOpponentsBtn.disabled = true;
     try {
-      const current = el.opponentSelect.value;
+      const current = selectedOpponentId;
       await loadOpponentSelect(current !== NEW_OPPONENT_VALUE ? current : null);
     } finally {
       el.refreshOpponentsBtn.disabled = false;
@@ -139,9 +151,8 @@
     await refreshNextMatch();
     await refreshUpcoming();
     await refreshPhotos();
-    // Gegner sind mannschaftsübergreifend – Dropdown bei jedem Wechsel frisch halten.
-    const current = el.opponentSelect.value;
-    await loadOpponentSelect(current && current !== NEW_OPPONENT_VALUE ? current : null);
+    // Gegner sind mannschaftsübergreifend – Liste bei jedem Wechsel frisch halten.
+    await loadOpponentSelect(selectedOpponentId !== NEW_OPPONENT_VALUE ? selectedOpponentId : null);
   }
 
   async function refreshNextMatch() {
@@ -155,7 +166,7 @@
     const opponentName = f.opponent ? f.opponent.name : "(kein Gegner)";
     const ort = f.is_home ? f.venue || state.team.default_venue : `Auswärts bei ${opponentName}`;
     el.nextMatchInfo.innerHTML = `
-      <strong>Spieltag ${f.matchday || "?"} · ${opponentName}</strong><br/>
+      <strong>${window.Caption.matchLine(f)} · ${opponentName}</strong><br/>
       ${window.Caption.formatDateLong(f.date)} · ${window.Caption.formatTime(f.kickoff)} Uhr<br/>
       ${ort}
     `;
@@ -240,7 +251,7 @@
       const opponentName = f.opponent ? f.opponent.name : "(kein Gegner)";
       item.innerHTML = `
         <div>
-          <strong>Spieltag ${f.matchday || "?"} · ${opponentName}</strong>
+          <strong>${window.Caption.matchLine(f)} · ${opponentName}</strong>
           <div class="meta">${f.date || ""} ${f.kickoff || ""} · ${f.is_home ? "Heim" : "Auswärts"}</div>
         </div>
         <div>
@@ -292,7 +303,7 @@
   el.createOpponentBtn.addEventListener("click", async () => {
     el.createOpponentBtn.disabled = true;
     try {
-      if (el.opponentSelect.value === NEW_OPPONENT_VALUE) {
+      if (selectedOpponentId === NEW_OPPONENT_VALUE) {
         const name = el.newOpponentName.value.trim();
         if (!name) {
           el.createOpponentMsg.textContent = "Bitte einen Namen eingeben.";
@@ -312,7 +323,7 @@
         await loadOpponentSelect(created.id);
         el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
       } else {
-        const opponent = opponentsCache.find((o) => o.id === el.opponentSelect.value);
+        const opponent = opponentsCache.find((o) => o.id === selectedOpponentId);
         const logoFile = el.newOpponentLogo.files[0] || null;
         if (!logoFile) {
           el.createOpponentMsg.textContent = "Bitte zuerst ein Logo auswählen.";
@@ -330,24 +341,35 @@
     }
   });
 
+  function updateNewFixtureTypeMode() {
+    const isLiga = el.newFixtureType.value === "liga";
+    el.newFixtureMatchdayField.style.display = isLiga ? "" : "none";
+    el.newFixtureMatchdayField.querySelector("input").required = isLiga;
+  }
+  el.newFixtureType.addEventListener("change", updateNewFixtureTypeMode);
+  updateNewFixtureTypeMode();
+
   el.newFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.newFixtureForm);
     const opponent = await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
+    const type = fd.get("type") || "liga";
     await window.Db.createFixture({
       team_id: state.team.id,
-      matchday: Number(fd.get("matchday")),
+      type,
+      matchday: type === "liga" && fd.get("matchday") ? Number(fd.get("matchday")) : null,
       opponent_id: opponent.id,
       date: fd.get("date"),
       kickoff: fd.get("kickoff"),
       venue: fd.get("venue") || (isHome ? state.team.default_venue : opponent.name),
       is_home: isHome,
-      competition: state.team.competition,
+      competition: type === "liga" ? state.team.competition : null,
       status: "geplant",
     });
     el.newFixtureForm.reset();
+    updateNewFixtureTypeMode();
     await refreshUpcoming();
     await refreshNextMatch();
     // Falls dabei per Freitext ein neuer Gegner entstanden ist: Dropdown aktuell halten

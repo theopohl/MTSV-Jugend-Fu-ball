@@ -152,7 +152,11 @@ Admin-Passcode ab, falls noch nicht eingeloggt).
 1. Öffne die Trainer-Seite (`index.html`, mit Passcode) und lege über
    **Spielplan-Import** im Generator (`generator.html`, mit Admin-Passcode)
    den kompletten Spielplan der Saison an – entweder Spiel für Spiel oder als
-   eingefügte Tabelle (Spieltag, Gegner, Datum, Uhrzeit, Ort, Heim/Auswärts).
+   eingefügte Tabelle (Spieltag, Gegner, Datum, Uhrzeit, Ort, Heim/Auswärts,
+   optional Art). Bei der Art zwischen **Ligaspiel**, **Testspiel** und
+   **Pokalspiel** wählen – nur Ligaspiele zählen als „Spieltag N"; bei
+   Test- und Pokalspielen erscheint stattdessen die Spielart selbst auf Bild
+   und im Bildtext, eine Spieltag-Nr. ist dort nicht nötig.
 2. Nach jedem Spiel trägt der Trainer auf der Trainer-Seite das Ergebnis ein.
 3. Im Generator (`generator.html`) Mannschaft, Post-Typ (Ankündigung/Ergebnis)
    und ggf. ein Mannschaftsfoto wählen → Vorschau prüfen → **PNG

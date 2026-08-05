@@ -63,6 +63,19 @@ window.Caption = (function () {
     return "remis";
   }
 
+  // Test- und Pokalspiele zählen nicht als Liga-Spieltag – dort erscheint
+  // statt "Spieltag N" die Spielart selbst.
+  function typeLabel(type) {
+    if (type === "testspiel") return "Testspiel";
+    if (type === "pokal") return "Pokalspiel";
+    return null;
+  }
+
+  function matchLine(fixture) {
+    const right = typeLabel(fixture.type) || `Spieltag ${fixture.matchday || ""}`;
+    return fixture.competition ? `${fixture.competition} · ${right}` : right;
+  }
+
   function teamHashtag(teamName) {
     return teamName.replace(/-/g, "").replace(/\s+/g, "");
   }
@@ -80,7 +93,7 @@ window.Caption = (function () {
   }
 
   const ANNOUNCE_HEADER_VARIANTS = (teamName) => [
-    `⚽️ Spieltag für unsere ${teamName}!`,
+    `⚽️ Nächstes Spiel für unsere ${teamName}!`,
     `⚽️ Unsere ${teamName} ist wieder gefordert.`,
     `⚽️ Nächstes Spiel für die ${teamName} steht an.`,
   ];
@@ -146,7 +159,7 @@ window.Caption = (function () {
       "",
       `📅 ${formatDateShort(fixture.date)} · ${formatTime(fixture.kickoff)} Uhr`,
       `📍 ${ortLine}`,
-      `🏆 ${fixture.competition || ""} · Spieltag ${fixture.matchday || ""}`,
+      `🏆 ${matchLine(fixture)}`,
       "",
       announceOutro(),
       "",
@@ -200,7 +213,7 @@ window.Caption = (function () {
       resultHeader(teamName),
       "",
       `MTSV ${fixture.own_goals}:${fixture.opp_goals} ${opponentName}`,
-      `🏆 ${fixture.competition || ""} · Spieltag ${fixture.matchday || ""}`,
+      `🏆 ${matchLine(fixture)}`,
       "",
     ];
     if (extra) {
@@ -216,6 +229,8 @@ window.Caption = (function () {
     formatTime,
     weekdayShort,
     resultKind,
+    typeLabel,
+    matchLine,
     buildAnkuendigung,
     buildErgebnis,
   };

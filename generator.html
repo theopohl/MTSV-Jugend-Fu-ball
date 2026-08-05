@@ -95,6 +95,16 @@
     <form id="singleFixtureForm">
       <div class="row">
         <div class="field">
+          <label>Art</label>
+          <select name="type" id="singleFixtureType">
+            <option value="liga">Ligaspiel</option>
+            <option value="testspiel">Testspiel</option>
+            <option value="pokal">Pokalspiel</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" id="singleFixtureMatchdayField">
           <label>Spieltag-Nr.</label>
           <input type="number" name="matchday" min="1" required />
         </div>
@@ -132,10 +142,12 @@
     <h3 style="margin-top:28px;">Sammel-Import (CSV / eingefügte Tabelle)</h3>
     <p class="hint">
       Eine Zeile pro Spiel, Spalten getrennt durch Tab oder Komma:<br />
-      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A)</code>
+      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A), Art (optional)</code><br />
+      Art: <code>Liga</code> (Standard, wenn leer), <code>Testspiel</code> oder <code>Pokal</code> – bei
+      Testspiel/Pokal wird die Spieltag-Nr. ignoriert.
     </p>
     <div class="field">
-      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H"></textarea>
+      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H, Liga"></textarea>
     </div>
     <button type="button" id="bulkImportBtn" class="secondary">Spielplan importieren</button>
     <div id="bulkImportResult" class="hint"></div>
