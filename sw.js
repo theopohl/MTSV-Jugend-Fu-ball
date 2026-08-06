@@ -1,4 +1,4 @@
-const CACHE_NAME = "mtsv-post-generator-v3";
+const CACHE_NAME = "mtsv-post-generator-v4";
 const APP_SHELL = [
   "index.html",
   "generator.html",
