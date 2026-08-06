@@ -471,8 +471,13 @@
     let failed = 0;
     for (const row of rows) {
       try {
-        const [matchday, opponentName, date, kickoff, venue, homeAway, typeRaw] = row;
+        const [matchday, opponentName, date, kickoff, venue, homeAway, typeRaw, competitionRaw] = row;
         const type = parseBulkType(typeRaw);
+        const competition = competitionRaw
+          ? competitionRaw.trim()
+          : type === "liga"
+          ? state.team.competition
+          : null;
         const opponent = await getOrCreateOpponent(opponentName);
         const isHome = (homeAway || "H").toUpperCase().startsWith("H");
         await window.Db.createFixture({
@@ -484,7 +489,7 @@
           kickoff,
           venue: venue || (isHome ? state.team.default_venue : opponentName),
           is_home: isHome,
-          competition: type === "liga" ? state.team.competition : null,
+          competition,
           status: "geplant",
         });
         ok++;

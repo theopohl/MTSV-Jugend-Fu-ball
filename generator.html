@@ -143,12 +143,15 @@
     <h3 style="margin-top:28px;">Sammel-Import (CSV / eingefügte Tabelle)</h3>
     <p class="hint">
       Eine Zeile pro Spiel, Spalten getrennt durch Tab oder Komma:<br />
-      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A), Art (optional)</code><br />
+      <code>Spieltag, Gegner, Datum (JJJJ-MM-TT), Uhrzeit (HH:MM), Ort, Heim/Auswärts (H/A), Art (optional), Wettbewerb (optional)</code><br />
       Art: <code>Liga</code> (Standard, wenn leer), <code>Testspiel</code> oder <code>Pokal</code> – bei
-      Testspiel/Pokal wird die Spieltag-Nr. ignoriert.
+      Testspiel/Pokal wird die Spieltag-Nr. ignoriert.<br />
+      Wettbewerb: nur nötig, wenn er für dieses Spiel vom Standard-Wettbewerb der Mannschaft
+      abweichen soll (z. B. „Kreispokal"). Leer lassen = Standard-Wettbewerb der Mannschaft wird
+      verwendet. Auf Bild und im Bildtext wird immer der Wettbewerb des jeweiligen Spiels angezeigt.
     </p>
     <div class="field">
-      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H, Liga"></textarea>
+      <textarea id="bulkImportInput" rows="6" placeholder="27, TuS Rotenhof, 2026-04-25, 14:00, Sportpark Wilhelmshöhe, H, Liga, Landesliga-Quali"></textarea>
     </div>
     <button type="button" id="bulkImportBtn" class="secondary">Spielplan importieren</button>
     <div id="bulkImportResult" class="hint"></div>
