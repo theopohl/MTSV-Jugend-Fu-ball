@@ -11,6 +11,9 @@
     selectedPhotoUrl: null,
   };
 
+  const NEW_OPPONENT_VALUE = "__new__";
+  let selectedFixtureOpponentId = NEW_OPPONENT_VALUE;
+
   const el = {
     teamChips: document.getElementById("teamChips"),
     typeChips: document.getElementById("typeChips"),
@@ -26,6 +29,8 @@
     singleFixtureForm: document.getElementById("singleFixtureForm"),
     singleFixtureType: document.getElementById("singleFixtureType"),
     singleFixtureMatchdayField: document.getElementById("singleFixtureMatchdayField"),
+    singleFixtureOpponentChips: document.getElementById("singleFixtureOpponentChips"),
+    singleFixtureOpponentInput: document.getElementById("singleFixtureOpponentInput"),
     bulkImportInput: document.getElementById("bulkImportInput"),
     bulkImportBtn: document.getElementById("bulkImportBtn"),
     bulkImportResult: document.getElementById("bulkImportResult"),
@@ -179,7 +184,37 @@
     state.opponents = await window.Db.getOpponents();
     state.photos = await window.Db.getTeamPhotos(team.id);
     renderPhotoGrid();
+    renderFixtureOpponentChips();
     await loadFixtures();
+  }
+
+  // ---- Gegner-Auswahl im "Einzelnes Spiel"-Formular -----------------------
+
+  function renderFixtureOpponentChips() {
+    el.singleFixtureOpponentChips.innerHTML = "";
+
+    const newChip = document.createElement("div");
+    newChip.className = "chip" + (selectedFixtureOpponentId === NEW_OPPONENT_VALUE ? " active" : "");
+    newChip.textContent = "+ neuer Gegner";
+    newChip.addEventListener("click", () => selectFixtureOpponent(NEW_OPPONENT_VALUE));
+    el.singleFixtureOpponentChips.appendChild(newChip);
+
+    state.opponents.forEach((o) => {
+      const chip = document.createElement("div");
+      chip.className = "chip" + (o.id === selectedFixtureOpponentId ? " active" : "");
+      chip.textContent = o.name;
+      chip.addEventListener("click", () => selectFixtureOpponent(o.id));
+      el.singleFixtureOpponentChips.appendChild(chip);
+    });
+  }
+
+  function selectFixtureOpponent(id) {
+    selectedFixtureOpponentId = id;
+    renderFixtureOpponentChips();
+    const isNew = id === NEW_OPPONENT_VALUE;
+    el.singleFixtureOpponentInput.style.display = isNew ? "" : "none";
+    el.singleFixtureOpponentInput.required = isNew;
+    if (isNew) el.singleFixtureOpponentInput.value = "";
   }
 
   function selectType(type) {
@@ -381,12 +416,16 @@
   }
   el.singleFixtureType.addEventListener("change", updateSingleFixtureTypeMode);
   updateSingleFixtureTypeMode();
+  selectFixtureOpponent(NEW_OPPONENT_VALUE);
 
   el.singleFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.singleFixtureForm);
-    const opponent = await getOrCreateOpponent(fd.get("opponent"));
+    const opponent =
+      selectedFixtureOpponentId !== NEW_OPPONENT_VALUE
+        ? state.opponents.find((o) => o.id === selectedFixtureOpponentId)
+        : await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
     const type = fd.get("type") || "liga";
     await window.Db.createFixture({
@@ -403,6 +442,7 @@
     });
     el.singleFixtureForm.reset();
     updateSingleFixtureTypeMode();
+    selectFixtureOpponent(NEW_OPPONENT_VALUE);
     await loadFixtures();
   });
 
@@ -455,6 +495,7 @@
     }
     el.bulkImportResult.textContent = `${ok} Spiele importiert${failed ? `, ${failed} fehlgeschlagen` : ""}.`;
     el.bulkImportInput.value = "";
+    renderFixtureOpponentChips();
     await loadFixtures();
   });
 

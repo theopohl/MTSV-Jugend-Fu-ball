@@ -36,11 +36,14 @@
     newFixtureForm: document.getElementById("newFixtureForm"),
     newFixtureType: document.getElementById("newFixtureType"),
     newFixtureMatchdayField: document.getElementById("newFixtureMatchdayField"),
+    newFixtureOpponentChips: document.getElementById("newFixtureOpponentChips"),
+    newFixtureOpponentInput: document.getElementById("newFixtureOpponentInput"),
   };
 
   const NEW_OPPONENT_VALUE = "__new__";
   let opponentsCache = null;
   let selectedOpponentId = NEW_OPPONENT_VALUE;
+  let selectedFixtureOpponentId = NEW_OPPONENT_VALUE;
 
   async function ensureOpponentsCache() {
     if (!opponentsCache) opponentsCache = await window.Db.getOpponents();
@@ -67,6 +70,37 @@
       selectId && opponentsCache.some((o) => o.id === selectId) ? selectId : NEW_OPPONENT_VALUE;
     renderOpponentChips();
     updateOpponentFormMode();
+    renderFixtureOpponentChips();
+  }
+
+  // ---- Gegner-Auswahl im "Neues Spiel anlegen"-Formular ------------------
+
+  function renderFixtureOpponentChips() {
+    if (!el.newFixtureOpponentChips) return;
+    el.newFixtureOpponentChips.innerHTML = "";
+
+    const newChip = document.createElement("div");
+    newChip.className = "chip" + (selectedFixtureOpponentId === NEW_OPPONENT_VALUE ? " active" : "");
+    newChip.textContent = "+ neuer Gegner";
+    newChip.addEventListener("click", () => selectFixtureOpponent(NEW_OPPONENT_VALUE));
+    el.newFixtureOpponentChips.appendChild(newChip);
+
+    (opponentsCache || []).forEach((o) => {
+      const chip = document.createElement("div");
+      chip.className = "chip" + (o.id === selectedFixtureOpponentId ? " active" : "");
+      chip.textContent = o.name;
+      chip.addEventListener("click", () => selectFixtureOpponent(o.id));
+      el.newFixtureOpponentChips.appendChild(chip);
+    });
+  }
+
+  function selectFixtureOpponent(id) {
+    selectedFixtureOpponentId = id;
+    renderFixtureOpponentChips();
+    const isNew = id === NEW_OPPONENT_VALUE;
+    el.newFixtureOpponentInput.style.display = isNew ? "" : "none";
+    el.newFixtureOpponentInput.required = isNew;
+    if (isNew) el.newFixtureOpponentInput.value = "";
   }
 
   function renderOpponentChips() {
@@ -348,12 +382,16 @@
   }
   el.newFixtureType.addEventListener("change", updateNewFixtureTypeMode);
   updateNewFixtureTypeMode();
+  selectFixtureOpponent(NEW_OPPONENT_VALUE);
 
   el.newFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.newFixtureForm);
-    const opponent = await getOrCreateOpponent(fd.get("opponent"));
+    const opponent =
+      selectedFixtureOpponentId !== NEW_OPPONENT_VALUE
+        ? opponentsCache.find((o) => o.id === selectedFixtureOpponentId)
+        : await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
     const type = fd.get("type") || "liga";
     await window.Db.createFixture({
@@ -370,10 +408,12 @@
     });
     el.newFixtureForm.reset();
     updateNewFixtureTypeMode();
+    selectFixtureOpponent(NEW_OPPONENT_VALUE);
     await refreshUpcoming();
     await refreshNextMatch();
-    // Falls dabei per Freitext ein neuer Gegner entstanden ist: Dropdown aktuell halten
-    // und den (neu angelegten oder wiederverwendeten) Gegner vorauswählen.
+    // Falls dabei per Freitext ein neuer Gegner entstanden ist: Liste aktuell
+    // halten und den (neu angelegten oder wiederverwendeten) Gegner im
+    // "Gegner anlegen"-Bereich vorauswählen.
     await loadOpponentSelect(opponent.id);
   });
 

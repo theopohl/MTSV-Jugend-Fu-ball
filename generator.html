@@ -108,10 +108,11 @@
           <label>Spieltag-Nr.</label>
           <input type="number" name="matchday" min="1" required />
         </div>
-        <div class="field">
-          <label>Gegner</label>
-          <input type="text" name="opponent" required />
-        </div>
+      </div>
+      <div class="field">
+        <label>Gegner</label>
+        <div class="chip-list" id="singleFixtureOpponentChips"></div>
+        <input type="text" name="opponent" id="singleFixtureOpponentInput" placeholder="Name des neuen Gegners" />
       </div>
       <div class="row">
         <div class="field">
