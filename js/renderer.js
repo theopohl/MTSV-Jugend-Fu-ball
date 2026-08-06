@@ -67,8 +67,8 @@ window.Renderer = (function () {
       smallLineCenterY: 0.415 * H,
       smallLineFontSize: 26,
       headlineStartY: 0.515 * H,
-      headlineFontSize: 90,
-      headlineLineHeight: 96,
+      headlineMinFontSize: 40,
+      headlineMaxFontSize: 150,
       venueCenterY: 0.685 * H,
       venueFontSize: 28,
       duelCenterY: 0.8 * H,
@@ -171,24 +171,24 @@ window.Renderer = (function () {
     return new Date(y, m - 1, d);
   }
 
-  // Test- und Pokalspiele zählen nicht als Liga-Spieltag – dort erscheint
-  // statt "SPIELTAG N" bzw. der Wettbewerbs-Überschrift die Spielart selbst.
+  // Test- und Pokalspiele zählen nicht als Liga-Spieltag: keine Spieltag-Nr.
+  // in der kleinen Zeile, und als Fallback-Überschrift/-Tag, falls kein
+  // Wettbewerb hinterlegt ist.
   function typeLabel(type) {
     if (type === "testspiel") return "Testspiel";
     if (type === "pokal") return "Pokalspiel";
     return null;
   }
 
-  function matchTypeLabel(type) {
-    const label = typeLabel(type);
-    return label ? label.toUpperCase() : null;
+  function isLigaType(type) {
+    return type !== "testspiel" && type !== "pokal";
   }
 
   function formatSmallLine(matchday, dateStr, timeStr, type) {
     const d = parseDate(dateStr);
     const dateBit = d ? `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}. ${MONTHS[d.getMonth()]}` : "";
     const timeBit = timeStr ? `${timeStr.slice(0, 5)} UHR` : "";
-    const matchBit = matchTypeLabel(type) || `SPIELTAG ${matchday || "?"}`;
+    const matchBit = isLigaType(type) ? `SPIELTAG ${matchday || "?"}` : null;
     return [matchBit, dateBit, timeBit].filter(Boolean).join(" · ");
   }
 
@@ -362,7 +362,7 @@ window.Renderer = (function () {
     const jersey = await loadImage(window.APP_CONFIG.jerseyBg);
     ctx.drawImage(jersey, 0, 0, W, H);
 
-    const tagSuffix = typeLabel(data.type) || data.competition;
+    const tagSuffix = data.competition || typeLabel(data.type);
     const tagText = tagSuffix ? `${data.teamName} · ${tagSuffix}` : data.teamName;
     drawTeamTag(ctx, tagText);
 
@@ -447,6 +447,28 @@ window.Renderer = (function () {
     ctx.fillRect(0, 0, W, H);
   }
 
+  // Passt die Schriftgröße der Wettbewerbs-Überschrift an die Textlänge an:
+  // kurze Namen (z. B. "SH-Pokal") werden GROSS gezeichnet, um die Breite
+  // gut auszufüllen, lange Namen (z. B. "Landesliga-Quali") entsprechend
+  // verkleinert – nie ein festes Schriftmaß. Ein Wort läuft einzeilig,
+  // zwei Wörter (bzw. am Bindestrich getrennt) oder zu langer Text auf
+  // maximal zwei Zeilen.
+  function fitHeadline(ctx, words, maxWidth, minSize, maxSize, maxBlockHeight) {
+    for (let fontSize = maxSize; fontSize >= minSize; fontSize -= 2) {
+      ctx.font = `900 ${fontSize}px ${FONTS.condensed}`;
+      const lines = words.length <= 2 && words.length > 0 ? words : wrapText(ctx, words.join(" "), maxWidth);
+      if (lines.length > 2) continue;
+      const widest = Math.max(0, ...lines.map((l) => ctx.measureText(l).width));
+      const blockHeight = lines.length * fontSize * 1.07;
+      if (widest <= maxWidth && blockHeight <= maxBlockHeight) {
+        return { fontSize, lines };
+      }
+    }
+    ctx.font = `900 ${minSize}px ${FONTS.condensed}`;
+    const lines = words.length <= 2 && words.length > 0 ? words : wrapText(ctx, words.join(" "), maxWidth);
+    return { fontSize: minSize, lines };
+  }
+
   function drawHeadline(ctx, text, L) {
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
@@ -456,16 +478,18 @@ window.Renderer = (function () {
     // Bindestrich/Leerzeichen in zwei große Zeilen aufgeteilt (Bindestrich
     // fällt dabei weg), statt als ein kleinerer Einzeiler zu laufen.
     const maxWidth = W * 0.9;
+    // Verfügbare Höhe bis zur Ort-Zeile darf nicht überschritten werden,
+    // sonst überlappt eine zweizeilige Überschrift mit dem Text darunter.
+    const maxBlockHeight = (L.venueCenterY - L.headlineStartY) * 0.82;
     const words = text.toUpperCase().replace(/-/g, " ").split(" ").filter(Boolean);
-    let fontSize = L.headlineFontSize;
-    let lines = [];
-    while (true) {
-      ctx.font = `900 ${fontSize}px ${FONTS.condensed}`;
-      lines = words.length <= 2 && words.length > 0 ? words : wrapText(ctx, words.join(" "), maxWidth);
-      const widest = Math.max(0, ...lines.map((l) => ctx.measureText(l).width));
-      if ((lines.length <= 2 && widest <= maxWidth) || fontSize <= 40) break;
-      fontSize -= 4;
-    }
+    const { fontSize, lines } = fitHeadline(
+      ctx,
+      words,
+      maxWidth,
+      L.headlineMinFontSize,
+      L.headlineMaxFontSize,
+      maxBlockHeight
+    );
 
     const lineHeight = fontSize * 1.07;
     let y = L.headlineStartY + fontSize * 0.8;
@@ -491,7 +515,7 @@ window.Renderer = (function () {
     drawLetterSpaced(ctx, smallLine, W / 2, L.smallLineCenterY, 1.5, "center");
     ctx.textAlign = "left";
 
-    drawHeadline(ctx, typeLabel(data.type) || data.competition || "Spieltag", L);
+    drawHeadline(ctx, data.competition || typeLabel(data.type) || "Spieltag", L);
 
     ctx.fillStyle = c.cream;
     ctx.font = `600 ${L.venueFontSize}px ${FONTS.condensed}`;

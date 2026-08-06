@@ -63,17 +63,23 @@ window.Caption = (function () {
     return "remis";
   }
 
-  // Test- und Pokalspiele zählen nicht als Liga-Spieltag – dort erscheint
-  // statt "Spieltag N" die Spielart selbst.
+  // Test- und Pokalspiele zählen nicht als Liga-Spieltag: keine Spieltag-Nr.,
+  // und als Fallback, falls für das Spiel kein Wettbewerb hinterlegt ist.
   function typeLabel(type) {
     if (type === "testspiel") return "Testspiel";
     if (type === "pokal") return "Pokalspiel";
     return null;
   }
 
+  function isLigaType(type) {
+    return type !== "testspiel" && type !== "pokal";
+  }
+
   function matchLine(fixture) {
-    const right = typeLabel(fixture.type) || `Spieltag ${fixture.matchday || ""}`;
-    return fixture.competition ? `${fixture.competition} · ${right}` : right;
+    const label = fixture.competition || typeLabel(fixture.type) || "";
+    if (!isLigaType(fixture.type)) return label;
+    const spieltag = `Spieltag ${fixture.matchday || ""}`;
+    return label ? `${label} · ${spieltag}` : spieltag;
   }
 
   function teamHashtag(teamName) {
