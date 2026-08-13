@@ -158,5 +158,5 @@ values
   ('A-Jugend', 'a-jugend', 'Landesliga-Quali', '#AJugend', 'Sportpark Wilhelmshöhe'),
   ('B-Jugend', 'b-jugend', 'Landesliga-Quali', '#BJugend', 'Sportpark Wilhelmshöhe'),
   ('C-Jugend', 'c-jugend', 'Landesliga-Quali', '#CJugend', 'Sportpark Wilhelmshöhe'),
-  ('D-Jugend', 'd-jugend', '', '#DJugend', 'Sportpark Wilhelmshöhe')
+  ('D-Jugend', 'd-jugend', 'Verbandsliga-Quali', '#DJugend', 'Sportpark Wilhelmshöhe')
 on conflict (slug) do nothing;

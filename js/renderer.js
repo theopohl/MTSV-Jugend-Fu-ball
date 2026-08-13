@@ -159,6 +159,17 @@ window.Renderer = (function () {
     return lines;
   }
 
+  // Wie wrapText, garantiert aber maximal `maxLines` Zeilen: überzählige
+  // Zeilen werden in die letzte Zeile gequetscht statt (wie bei purem
+  // ctx.fillText mit lines.slice(0, 2)) stillschweigend zu verschwinden.
+  function wrapTextMaxLines(ctx, text, maxWidth, maxLines) {
+    const lines = wrapText(ctx, text, maxWidth);
+    if (lines.length <= maxLines) return lines;
+    const head = lines.slice(0, maxLines - 1);
+    head.push(lines.slice(maxLines - 1).join(" "));
+    return head;
+  }
+
   function resultKind(own, opp) {
     if (own > opp) return "sieg";
     if (own < opp) return "niederlage";
@@ -465,7 +476,10 @@ window.Renderer = (function () {
       }
     }
     ctx.font = `900 ${minSize}px ${FONTS.condensed}`;
-    const lines = words.length <= 2 && words.length > 0 ? words : wrapText(ctx, words.join(" "), maxWidth);
+    const lines =
+      words.length <= 2 && words.length > 0
+        ? words
+        : wrapTextMaxLines(ctx, words.join(" "), maxWidth, 2);
     return { fontSize: minSize, lines };
   }
 
