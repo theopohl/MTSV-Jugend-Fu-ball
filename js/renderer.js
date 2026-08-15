@@ -288,13 +288,20 @@ window.Renderer = (function () {
     ctx.textAlign = "left";
   }
 
-  function drawDuelBlock(ctx, centerY, mtsvImg, opponentImg, opponentName) {
+  function drawDuelBlock(ctx, centerY, mtsvImg, opponentImg, opponentName, isHome) {
     const c = COLORS();
     const d = LAYOUT.duel;
     const half = d.boxSize / 2;
 
-    drawDuelSquare(ctx, d.leftCenterX - half, centerY - half, d.boxSize, mtsvImg);
-    drawDuelSquare(ctx, d.rightCenterX - half, centerY - half, d.boxSize, opponentImg);
+    // Bei Auswärtsspielen steht der gastgebende Gegner links, MTSV rechts.
+    const away = isHome === false;
+    const leftImg = away ? opponentImg : mtsvImg;
+    const rightImg = away ? mtsvImg : opponentImg;
+    const leftLabel = away ? (opponentName || "").toUpperCase() : "MTSV";
+    const rightLabel = away ? "MTSV" : (opponentName || "").toUpperCase();
+
+    drawDuelSquare(ctx, d.leftCenterX - half, centerY - half, d.boxSize, leftImg);
+    drawDuelSquare(ctx, d.rightCenterX - half, centerY - half, d.boxSize, rightImg);
 
     ctx.fillStyle = c.cream;
     ctx.font = `900 ${d.vsFontSize}px ${FONTS.black}`;
@@ -305,8 +312,8 @@ window.Renderer = (function () {
 
     const nameY = centerY + half + d.nameGapBelow;
     const nameMaxWidth = d.boxSize + 30;
-    drawFittedLabel(ctx, "MTSV", d.leftCenterX, nameY, nameMaxWidth);
-    drawFittedLabel(ctx, (opponentName || "").toUpperCase(), d.rightCenterX, nameY, nameMaxWidth);
+    drawFittedLabel(ctx, leftLabel, d.leftCenterX, nameY, nameMaxWidth);
+    drawFittedLabel(ctx, rightLabel, d.rightCenterX, nameY, nameMaxWidth);
     ctx.textAlign = "left";
   }
 
@@ -396,7 +403,7 @@ window.Renderer = (function () {
 
     const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
     const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName);
+    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName, data.isHome);
 
     const presenterLogo = window.APP_CONFIG.club.presenterLogo
       ? await loadImage(window.APP_CONFIG.club.presenterLogo)
@@ -539,7 +546,7 @@ window.Renderer = (function () {
 
     const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
     const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName);
+    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName, data.isHome);
 
     const presenterLogo = window.APP_CONFIG.club.presenterLogo
       ? await loadImage(window.APP_CONFIG.club.presenterLogo)

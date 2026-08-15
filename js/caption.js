@@ -156,7 +156,7 @@ window.Caption = (function () {
     const venue = fixture.venue || "";
     const ortLine = fixture.is_home
       ? `Heimspiel · ${venue}`
-      : `Auswärts bei ${opponentName}`;
+      : `Auswärts bei: ${opponentName}`;
 
     return [
       announceHeader(teamName),

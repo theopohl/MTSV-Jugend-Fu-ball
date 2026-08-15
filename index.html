@@ -134,7 +134,7 @@
   </section>
 
   <section class="card">
-    <h2>Gegner anlegen</h2>
+    <h2>Logo anlegen</h2>
     <div class="field">
       <label>Gegner</label>
       <p class="hint" style="margin-top:-4px;">Vorhandenen Gegner anklicken oder „+ neuer Gegner" für einen neuen.</p>
@@ -151,7 +151,9 @@
     <div class="row">
       <div class="field" id="opponentNameField">
         <label>Name</label>
-        <input type="text" id="newOpponentName" />
+        <input type="text" id="newOpponentName" list="opponentNamesList" autocomplete="off" />
+        <datalist id="opponentNamesList"></datalist>
+        <p class="hint" style="margin-bottom:0;">Tippe den Namen – existiert der Gegner schon, wird er automatisch erkannt.</p>
       </div>
       <div class="field">
         <label id="opponentLogoLabel" for="newOpponentLogo">Logo (optional)</label>

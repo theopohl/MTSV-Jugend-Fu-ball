@@ -30,6 +30,7 @@
     opponentLogoPreview: document.getElementById("opponentLogoPreview"),
     opponentLogoPreviewEmpty: document.getElementById("opponentLogoPreviewEmpty"),
     newOpponentName: document.getElementById("newOpponentName"),
+    newOpponentNamesList: document.getElementById("opponentNamesList"),
     newOpponentLogo: document.getElementById("newOpponentLogo"),
     createOpponentBtn: document.getElementById("createOpponentBtn"),
     createOpponentMsg: document.getElementById("createOpponentMsg"),
@@ -71,7 +72,30 @@
     renderOpponentChips();
     updateOpponentFormMode();
     renderFixtureOpponentChips();
+    renderOpponentNameSuggestions();
   }
+
+  // Autovervollständigung im Namensfeld: Browser-Vorschlagsliste (datalist)
+  // plus automatisches Umschalten auf "vorhandener Gegner", sobald der
+  // getippte Name exakt (Groß-/Kleinschreibung egal) zu einem vorhandenen
+  // Gegner passt – ganz ohne den Chip extra anklicken zu müssen.
+  function renderOpponentNameSuggestions() {
+    if (!el.newOpponentNamesList) return;
+    el.newOpponentNamesList.innerHTML = "";
+    (opponentsCache || []).forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.name;
+      el.newOpponentNamesList.appendChild(opt);
+    });
+  }
+
+  el.newOpponentName.addEventListener("input", () => {
+    if (selectedOpponentId !== NEW_OPPONENT_VALUE) return;
+    const typed = el.newOpponentName.value.trim().toLowerCase();
+    if (!typed) return;
+    const match = (opponentsCache || []).find((o) => o.name.toLowerCase() === typed);
+    if (match) selectOpponent(match.id);
+  });
 
   // ---- Gegner-Auswahl im "Neues Spiel anlegen"-Formular ------------------
 
