@@ -29,13 +29,7 @@ window.APP_CONFIG = {
   club: {
     name: "MTSV Hohenwestedt",
     logo: "assets/mtsv-logo.png",
-    // Getippter Sponsor-Name – wird von renderer.js oben in der
-    // Presenter-Zeile groß dargestellt ("Der Spieltag wird präsentiert
-    // von POHL"). Dieses Feld hatte gefehlt, wodurch die Grafik-Erzeugung
-    // mit einem Fehler abgebrochen ist.
-    presenter: "POHL",
-    // Sponsor-Logo als Bild (falls an anderer Stelle im Design zusätzlich
-    // das echte Logo statt getippten Textes verwendet werden soll).
+    // Sponsor-Logo als Bild (kein getippter Text mehr) für die Sponsorleiste.
     presenterLogo: "assets/pohl-logo.png",
     defaultVenue: "Sportpark Wilhelmshöhe",
   },
