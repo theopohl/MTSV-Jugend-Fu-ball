@@ -1,6 +1,8 @@
 // Canvas-Renderer für Instagram-Posts (1080x1350).
-// Zeichnet die zwei Vorlagen "ankuendigung" und "ergebnis" exakt nach den
-// Referenzbildern assets/referenz-spieltag.png und assets/referenz-ergebnis.png.
+// Design: Mannschafts-Tag oben links (dünner Balken + Text), großer
+// zentrierter Wettbewerb, Duell-Block (Logos + "VS") und Sponsorleiste mit
+// echtem POHL-Logo unten. Kein Flaggen-Eck, kein getippter Presenter-Text
+// oben mehr – das ist die "alte", vor einigen Wochen festgelegte Optik.
 
 window.Renderer = (function () {
   const W = 1080;
@@ -12,47 +14,39 @@ window.Renderer = (function () {
   };
 
   const LAYOUT = {
-    flag: { rightMargin: 91, width: 55, top: 0, height: 207 },
-    presenter: {
-      centerX: 540,
-      labelY: 88,
-      labelSize: 23,
-      brandY: 168,
-      brandSize: 66,
-    },
-    // Mannschafts-Tag: für die Ergebnis-Vorlage und die Ankündigung getrennt
-    // einstellbar, damit die Ankündigung größer wirken kann als das Ergebnis.
-    chip: {
-      left: 64,
-      top: 278,
-      height: 82,
-      paddingX: 34,
-      fontSize: 40,
-    },
-    chipAnnounce: {
-      left: 64,
-      top: 272,
-      height: 92,
-      paddingX: 36,
+    teamTag: {
+      x: 64,
+      y: 62,
+      barW: 10,
       fontSize: 48,
+      gapAfterBar: 26,
     },
-    logoBoxResult: { x: 302, y: 857, w: 476, h: 179, radius: 26, padding: 26, gap: 40 },
-    logoBoxAnnounce: { x: 64, y: 1050, w: 316, h: 179, radius: 26, padding: 24, gap: 0 },
-    score: { centerX: 540, centerY: 585, fontSize: 230 },
-    // Torschützen jetzt zweispaltig nach Team getrennt (eigene Mannschaft
-    // links, Gegner rechts), mit kleinem Wappen vor jedem Namen.
+    metaLine: { centerX: 540, y: 560, fontSize: 42 },
+    headline: { centerX: 540, y: 748, maxFontSize: 132, minFontSize: 56, maxWidthRatio: 0.9 },
+    venueLine: { centerX: 540, y: 895, fontSize: 34 },
+    score: { centerX: 540, centerY: 420, fontSize: 280 },
+    outcome: { centerX: 540, y: 555, fontSize: 56 },
     scorers: {
-      centerY: 1220,
+      centerY: 655,
       rowGap: 46,
       fontSize: 32,
       crestSize: 34,
       colGapFromCenter: 24,
     },
-    headline: { x: 64, bottom: 900, fontSize: 92, lineHeight: 96, skewDeg: -11 },
-    matchInfoRight: { gap: 40 },
-    // Datum/Uhrzeit bei der Ankündigung etwas größer.
-    matchMeta: { fontSize: 34 },
-    matchday: { centerX: 540, y: 1300, fontSize: 26 },
+    matchup: {
+      centerY: 1080,
+      boxSize: 168,
+      gapFromCenter: 240,
+      nameOffsetY: 34,
+      nameFontSize: 32,
+      vsFontSize: 60,
+    },
+    sponsorBar: {
+      height: 97,
+      labelFontSize: 25,
+      logoHeightRatio: 0.4,
+      gapBetween: 24,
+    },
   };
 
   const COLORS = () => window.APP_CONFIG.colors;
@@ -72,6 +66,16 @@ window.Renderer = (function () {
       img.onerror = () => reject(new Error("Bild konnte nicht geladen werden: " + src));
       img.src = src;
     });
+  }
+
+  async function safeLoadImage(src) {
+    if (!src) return null;
+    try {
+      return await loadImage(src);
+    } catch (e) {
+      console.warn(e);
+      return null;
+    }
   }
 
   async function fontsReady() {
@@ -111,103 +115,167 @@ window.Renderer = (function () {
     return total;
   }
 
-  function drawFlagCorner(ctx) {
-    const c = COLORS();
-    const { rightMargin, width, top, height } = LAYOUT.flag;
-    const x = W - rightMargin - width;
-    const bandH = height / 3;
-    ctx.fillStyle = c.flagGreen;
-    ctx.fillRect(x, top, width, bandH);
-    ctx.fillStyle = c.flagWhite;
-    ctx.fillRect(x, top + bandH, width, bandH);
-    ctx.fillStyle = c.flagRed;
-    ctx.fillRect(x, top + bandH * 2, width, bandH);
-  }
-
-  function drawPresenter(ctx, label, brand) {
-    const { centerX, labelY, labelSize, brandY, brandSize } = LAYOUT.presenter;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = `600 ${labelSize}px ${FONTS.condensed}`;
-    ctx.textBaseline = "alphabetic";
-    drawLetterSpaced(ctx, label.toUpperCase(), centerX, labelY, 2.5, "center");
-
-    ctx.font = `900 ${brandSize}px ${FONTS.black}`;
-    ctx.textAlign = "center";
-    ctx.fillText(brand.toUpperCase(), centerX, brandY);
-    ctx.textAlign = "left";
-  }
-
-  // drawChip: "border" steuert, ob die Pille einen sichtbaren Rand
-  // (inkl. der Linie unter dem Text) bekommt. Für den Ergebnis-Post ist das
-  // jetzt standardmäßig AUS, damit dort kein Strich unter der Mannschafts-
-  // Schrift erscheint. Für die Ankündigung bleibt der Rahmen an und die
-  // Pille ist insgesamt größer (siehe LAYOUT.chipAnnounce).
-  function drawChip(ctx, text, layout = LAYOUT.chip, opts = {}) {
-    const { border = true } = opts;
-    const { left, top, height, paddingX, fontSize } = layout;
-    ctx.font = `600 ${fontSize}px ${FONTS.condensed}`;
-    const upper = text.toUpperCase();
-    const letterSpacing = 1.5;
-    const widths = [...upper].map((ch) => ctx.measureText(ch).width);
-    const textWidth = widths.reduce((a, b) => a + b, 0) + letterSpacing * (upper.length - 1);
-    const w = textWidth + paddingX * 2;
-
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    roundRectPath(ctx, left, top, w, height, height / 2);
-    ctx.fill();
-    if (border) {
-      ctx.strokeStyle = "rgba(255,255,255,0.28)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = "#FFFFFF";
-    const textY = top + height / 2 + fontSize * 0.35;
-    drawLetterSpaced(ctx, upper, left + paddingX, textY, letterSpacing, "left");
-    return w;
-  }
-
   function fitContain(img, slotW, slotH) {
     const scale = Math.min(slotW / img.width, slotH / img.height);
     return { w: img.width * scale, h: img.height * scale };
   }
 
-  function drawLogoBox(ctx, box, mtsvImg, opponentImg) {
-    ctx.save();
+  // ---- Mannschafts-Tag oben links: dünner weißer Balken + fetter Text ----
+  function drawTeamTag(ctx, text) {
+    const t = LAYOUT.teamTag;
+    ctx.font = `700 ${t.fontSize}px ${FONTS.condensed}`;
+    const upper = text.toUpperCase();
+    const barH = t.fontSize * 1.05;
     ctx.fillStyle = "#FFFFFF";
-    roundRectPath(ctx, box.x, box.y, box.w, box.h, box.radius);
+    roundRectPath(ctx, t.x, t.y, t.barW, barH, t.barW / 2);
     ctx.fill();
-    ctx.clip();
-
-    const slotW = (box.w - box.padding * 2 - box.gap) / 2;
-    const slotH = box.h - box.padding * 2;
-
-    const leftSlotX = box.x + box.padding;
-    const rightSlotX = leftSlotX + slotW + box.gap;
-    const slotY = box.y + box.padding;
-
-    if (mtsvImg) {
-      const size = fitContain(mtsvImg, slotW, slotH);
-      const dx = leftSlotX + (slotW - size.w) / 2;
-      const dy = slotY + (slotH - size.h) / 2;
-      ctx.drawImage(mtsvImg, dx, dy, size.w, size.h);
-    }
-    if (opponentImg) {
-      const size = fitContain(opponentImg, slotW, slotH);
-      const dx = rightSlotX + (slotW - size.w) / 2;
-      const dy = slotY + (slotH - size.h) / 2;
-      ctx.drawImage(opponentImg, dx, dy, size.w, size.h);
-    } else {
-      ctx.fillStyle = "#C9D2CC";
-      ctx.font = `600 20px ${FONTS.condensed}`;
-      ctx.textAlign = "center";
-      ctx.fillText("GEGNER-LOGO", rightSlotX + slotW / 2, slotY + slotH / 2 + 7);
-      ctx.textAlign = "left";
-    }
-    ctx.restore();
+    const textY = t.y + barH * 0.82;
+    drawLetterSpaced(ctx, upper, t.x + t.barW + t.gapAfterBar, textY, 1.5, "left");
   }
 
-  // Zeichnet ein kleines, rundes Wappen-Icon (für die Torschützen-Zeilen).
+  // ---- Kleine Meta-Zeile (Spieltag/Datum/Uhrzeit) ----
+  function drawMetaLine(ctx, text) {
+    const m = LAYOUT.metaLine;
+    ctx.font = `700 ${m.fontSize}px ${FONTS.condensed}`;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    drawLetterSpaced(ctx, text.toUpperCase(), m.centerX, m.y, 2, "center");
+  }
+
+  // ---- Große, zentrierte Überschrift (Wettbewerb), auto-fit, 1-2 Zeilen ----
+  function drawBigHeadline(ctx, text) {
+    const h = LAYOUT.headline;
+    const maxWidth = W * h.maxWidthRatio;
+    const upper = (text || "").toUpperCase();
+
+    function widthAt(size, str) {
+      ctx.font = `900 ${size}px ${FONTS.black}`;
+      return ctx.measureText(str).width;
+    }
+
+    let size = h.maxFontSize;
+    while (size > h.minFontSize && widthAt(size, upper) > maxWidth) size -= 2;
+
+    if (widthAt(size, upper) <= maxWidth || !upper.includes(" ")) {
+      ctx.font = `900 ${size}px ${FONTS.black}`;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textAlign = "center";
+      ctx.fillText(upper, h.centerX, h.y);
+      ctx.textAlign = "left";
+      return;
+    }
+
+    const words = upper.split(" ");
+    const bestSplit = Math.ceil(words.length / 2);
+    const line1 = words.slice(0, bestSplit).join(" ");
+    const line2 = words.slice(bestSplit).join(" ");
+
+    size = h.maxFontSize;
+    while (size > h.minFontSize && (widthAt(size, line1) > maxWidth || widthAt(size, line2) > maxWidth)) {
+      size -= 2;
+    }
+    ctx.font = `900 ${size}px ${FONTS.black}`;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "center";
+    const lineHeight = size * 1.02;
+    ctx.fillText(line1, h.centerX, h.y - lineHeight * 0.55);
+    ctx.fillText(line2, h.centerX, h.y - lineHeight * 0.55 + lineHeight);
+    ctx.textAlign = "left";
+  }
+
+  // ---- "BEI: GEGNER" bzw. Heim-Ort-Zeile ----
+  function drawVenueLine(ctx, venueLine) {
+    const v = LAYOUT.venueLine;
+    let text = (venueLine || "").trim();
+    text = text.replace(/^bei\s+/i, "Bei: ");
+    ctx.font = `700 ${v.fontSize}px ${FONTS.condensed}`;
+    ctx.fillStyle = "#FFFFFF";
+    drawLetterSpaced(ctx, text.toUpperCase(), v.centerX, v.y, 1.5, "center");
+  }
+
+  // ---- Duell-Block: zwei Wappen + "VS" + Namen darunter ----
+  function drawMatchup(ctx, leftImg, leftName, rightImg, rightName) {
+    const m = LAYOUT.matchup;
+    const s = m.boxSize;
+    const leftX = m.centerX - m.gapFromCenter - s / 2;
+    const rightX = m.centerX + m.gapFromCenter - s / 2;
+    const boxY = m.centerY - s / 2;
+
+    [leftX, rightX].forEach((bx, i) => {
+      ctx.save();
+      ctx.fillStyle = "#FFFFFF";
+      roundRectPath(ctx, bx, boxY, s, s, s * 0.14);
+      ctx.fill();
+      ctx.clip();
+      const img = i === 0 ? leftImg : rightImg;
+      if (img) {
+        const pad = s * 0.14;
+        const fit = fitContain(img, s - pad * 2, s - pad * 2);
+        ctx.drawImage(img, bx + (s - fit.w) / 2, boxY + (s - fit.h) / 2, fit.w, fit.h);
+      }
+      ctx.restore();
+    });
+
+    ctx.font = `900 ${m.vsFontSize}px ${FONTS.black}`;
+    ctx.fillStyle = COLORS().cream || "#E9EFE9";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("VS", m.centerX, m.centerY);
+    ctx.textBaseline = "alphabetic";
+
+    ctx.font = `700 ${m.nameFontSize}px ${FONTS.condensed}`;
+    ctx.fillStyle = "#FFFFFF";
+    const nameY = boxY + s + m.nameOffsetY;
+    ctx.fillText((leftName || "").toUpperCase(), leftX + s / 2, nameY);
+    ctx.fillText((rightName || "").toUpperCase(), rightX + s / 2, nameY);
+    ctx.textAlign = "left";
+  }
+
+  // ---- Sponsorleiste unten mit echtem POHL-Logo ----
+  async function drawSponsorBar(ctx) {
+    const b = LAYOUT.sponsorBar;
+    const c = COLORS();
+    const y0 = H - b.height;
+    ctx.fillStyle = c.sponsorBarDark || "#081E14";
+    ctx.fillRect(0, y0, W, b.height);
+    ctx.fillStyle = c.cream || "#E9EFE9";
+    ctx.fillRect(0, y0, W, 2);
+
+    const label = "PRÄSENTIERT VON";
+    ctx.font = `700 ${b.labelFontSize}px ${FONTS.condensed}`;
+    const widths = [...label].map((ch) => ctx.measureText(ch).width);
+    const labelWidth = widths.reduce((a, v) => a + v, 0) + 2 * (label.length - 1);
+
+    const logoSrc = window.APP_CONFIG.club.presenterLogo;
+    const logoImg = await safeLoadImage(logoSrc);
+    let logoW = 0;
+    let logoH = 0;
+    if (logoImg) {
+      logoH = b.height * b.logoHeightRatio;
+      logoW = (logoImg.width / logoImg.height) * logoH;
+    }
+
+    const totalWidth = labelWidth + (logoImg ? b.gapBetween + logoW : 0);
+    const startX = W / 2 - totalWidth / 2;
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    const textY = y0 + b.height / 2 + b.labelFontSize * 0.32;
+    drawLetterSpaced(ctx, label, startX, textY, 2, "left");
+
+    if (logoImg) {
+      const logoX = startX + labelWidth + b.gapBetween;
+      const logoY = y0 + (b.height - logoH) / 2;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+    }
+  }
+
+  function scorerIsOwnTeam(sc) {
+    const t = (sc.team || "").toString().toLowerCase();
+    if (["opp", "opponent", "gegner", "away", "auswaerts", "auswärts"].includes(t)) {
+      return false;
+    }
+    return true;
+  }
+
   function drawSmallCrest(ctx, img, cx, cy, size) {
     ctx.save();
     ctx.beginPath();
@@ -222,42 +290,25 @@ window.Renderer = (function () {
     ctx.restore();
   }
 
-  // Ermittelt, ob ein Torschütze für die eigene Mannschaft oder den Gegner
-  // getroffen hat. Erwartet an sc.team einen der Werte "own"/"mtsv"/"heim"
-  // (eigenes Team) oder "opp"/"gegner"/"away" (Gegner). Fehlt das Feld
-  // (ältere Datensätze ohne Team-Zuordnung), wird als Fallback die eigene
-  // Mannschaft angenommen, damit nichts unsichtbar verschwindet – für
-  // korrekte Zuordnung MUSS das Eingabeformular künftig ein Team pro
-  // Torschütze mitspeichern.
-  function scorerIsOwnTeam(sc) {
-    const t = (sc.team || "").toString().toLowerCase();
-    if (["opp", "opponent", "gegner", "away", "auswaerts", "auswärts"].includes(t)) {
-      return false;
-    }
-    return true;
-  }
-
   // -------------------------------------------------------------------------
   // Ergebnis-Post
   // -------------------------------------------------------------------------
 
   async function renderErgebnis(ctx, data) {
     const c = COLORS();
-    const jersey = await loadImage(window.APP_CONFIG.jerseyBg);
-    ctx.drawImage(jersey, 0, 0, W, H);
+    const jersey = await safeLoadImage(window.APP_CONFIG.jerseyBg);
+    if (jersey) {
+      ctx.drawImage(jersey, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = c.jerseyGreen || "#0F3B26";
+      ctx.fillRect(0, 0, W, H);
+    }
 
-    drawFlagCorner(ctx);
-    drawPresenter(ctx, "Das Ergebnis wird präsentiert von", window.APP_CONFIG.club.presenter);
+    const chipText = data.competition ? `${data.teamName} · ${data.competition}` : data.teamName;
+    drawTeamTag(ctx, chipText);
 
-    const chipText = data.competition
-      ? `${data.teamName} · ${data.competition}`
-      : data.teamName;
-    // Kein Rahmen/Strich mehr unter der Mannschafts-Schrift beim Ergebnis-Post.
-    drawChip(ctx, chipText, LAYOUT.chip, { border: false });
-
-    // Spielstand
     const s = LAYOUT.score;
-    ctx.fillStyle = c.cream;
+    ctx.fillStyle = c.cream || "#E9EFE9";
     ctx.font = `900 ${s.fontSize}px ${FONTS.black}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -265,25 +316,28 @@ window.Renderer = (function () {
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
 
-    // Logo-Box
-    const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
-    const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawLogoBox(ctx, LAYOUT.logoBoxResult, mtsvImg, opponentImg);
+    let outcome = "UNENTSCHIEDEN";
+    if (data.ownGoals > data.oppGoals) outcome = "SIEG";
+    else if (data.ownGoals < data.oppGoals) outcome = "NIEDERLAGE";
+    ctx.font = `900 ${LAYOUT.outcome.fontSize}px ${FONTS.black}`;
+    ctx.fillStyle = c.cream || "#E9EFE9";
+    ctx.textAlign = "center";
+    ctx.fillText(outcome, LAYOUT.outcome.centerX, LAYOUT.outcome.y);
+    ctx.textAlign = "left";
 
-    // Torschützen – nach Team getrennt: eigene Mannschaft links (mit
-    // eigenem Wappen), Gegner rechts (mit Gegner-Wappen). So stehen die
-    // Namen jetzt bei der richtigen Mannschaft statt alle in einer Reihe.
+    const mtsvImg = await safeLoadImage(window.APP_CONFIG.club.logo);
+    const opponentImg = await safeLoadImage(data.opponentLogo);
+
     if (data.scorers && data.scorers.length) {
       const sc = LAYOUT.scorers;
       const ownScorers = data.scorers.filter(scorerIsOwnTeam);
       const oppScorers = data.scorers.filter((s2) => !scorerIsOwnTeam(s2));
 
       ctx.font = `900 ${sc.fontSize}px ${FONTS.condensed}`;
-      ctx.fillStyle = c.cream;
+      ctx.fillStyle = c.cream || "#E9EFE9";
 
       const rowCount = Math.max(ownScorers.length, oppScorers.length, 1);
       const startY = sc.centerY - ((rowCount - 1) * sc.rowGap) / 2;
-
       const leftColX = W / 2 - sc.colGapFromCenter;
       const rightColX = W / 2 + sc.colGapFromCenter;
 
@@ -302,9 +356,11 @@ window.Renderer = (function () {
         ctx.textAlign = "left";
         ctx.fillText(label, rightColX + sc.crestSize * 0.9, y + sc.fontSize * 0.35);
       });
-
       ctx.textAlign = "left";
     }
+
+    drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
+    await drawSponsorBar(ctx);
   }
 
   // -------------------------------------------------------------------------
@@ -317,10 +373,11 @@ window.Renderer = (function () {
       const dw = photoImg.width * scale;
       const dh = photoImg.height * scale;
       ctx.drawImage(photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      ctx.fillStyle = "rgba(22,86,50,0.30)";
+      ctx.fillRect(0, 0, W, H);
     } else {
       ctx.fillStyle = "#123322";
       ctx.fillRect(0, 0, W, H);
-      // Kreuzraster-Platzhaltermuster
       ctx.save();
       ctx.strokeStyle = "rgba(255,255,255,0.05)";
       ctx.lineWidth = 1;
@@ -336,7 +393,6 @@ window.Renderer = (function () {
         ctx.stroke();
       }
       ctx.restore();
-
       ctx.save();
       ctx.fillStyle = "rgba(255,255,255,0.07)";
       ctx.font = `600 26px ${FONTS.condensed}`;
@@ -346,105 +402,34 @@ window.Renderer = (function () {
     }
 
     const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, "rgba(6,26,17,0.15)");
-    gradient.addColorStop(0.55, "rgba(6,26,17,0.55)");
-    gradient.addColorStop(1, "rgba(6,26,17,0.94)");
+    gradient.addColorStop(0, "rgba(6,26,17,0.25)");
+    gradient.addColorStop(0.45, "rgba(6,26,17,0.55)");
+    gradient.addColorStop(1, "rgba(6,26,17,0.92)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, W, H);
   }
 
-  function drawHeadline(ctx, text) {
-    const h = LAYOUT.headline;
-    ctx.save();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = `900 ${h.fontSize}px ${FONTS.condensed}`;
-    ctx.textAlign = "left";
-
-    const words = text.toUpperCase().split(" ");
-    const maxWidth = W - h.x - 60;
-    const lines = [];
-    let line = "";
-    for (const word of words) {
-      const test = line ? `${line} ${word}` : word;
-      if (ctx.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
-      }
-    }
-    if (line) lines.push(line);
-
-    const totalHeight = lines.length * h.lineHeight;
-    let y = h.bottom - totalHeight + h.lineHeight * 0.8;
-
-    const skew = Math.tan((h.skewDeg * Math.PI) / 180);
-    for (const l of lines) {
-      ctx.save();
-      ctx.transform(1, 0, skew, 1, 0, 0);
-      // Skew um den Textursprung: x-Position anpassen, da transform global wirkt
-      const adjX = h.x - skew * y;
-      ctx.fillText(l, adjX, y);
-      ctx.restore();
-      y += h.lineHeight;
-    }
-    ctx.restore();
-  }
-
   async function renderAnkuendigung(ctx, data) {
-    const c = COLORS();
-    const photoImg = data.teamPhoto ? await loadImage(data.teamPhoto) : null;
+    const photoImg = await safeLoadImage(data.teamPhoto);
     drawAnnounceBackground(ctx, photoImg);
 
-    drawFlagCorner(ctx);
-    drawPresenter(ctx, "Der Spieltag wird präsentiert von", window.APP_CONFIG.club.presenter);
-    // Bei der Spieltags-Ankündigung ist das Mannschafts-Feld größer als beim
-    // Ergebnis (eigenes Layout LAYOUT.chipAnnounce), Rahmen bleibt sichtbar.
-    drawChip(ctx, data.teamName, LAYOUT.chipAnnounce);
+    drawTeamTag(ctx, data.teamName);
 
-    drawHeadline(ctx, data.competition || "Spieltag");
+    const metaParts = [];
+    if (data.matchday) metaParts.push(`Spieltag ${data.matchday}`);
+    if (data.dateLine) metaParts.push(data.dateLine);
+    if (data.timeLine) metaParts.push(`${data.timeLine} Uhr`);
+    drawMetaLine(ctx, metaParts.join(" · "));
 
-    // Logo-Box unten links
-    const box = LAYOUT.logoBoxAnnounce;
-    const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
-    const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawLogoBox(ctx, box, mtsvImg, opponentImg);
+    drawBigHeadline(ctx, data.competition || "Spieltag");
 
-    // Textblock rechts neben der Box
-    const textX = box.x + box.w + 32;
-    const rowH = box.h / 3;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.textAlign = "left";
+    drawVenueLine(ctx, data.venueLine);
 
-    ctx.font = `900 40px ${FONTS.condensed}`;
-    ctx.fillText((data.opponentName || "").toUpperCase(), textX, box.y + rowH * 1 - 6);
+    const mtsvImg = await safeLoadImage(window.APP_CONFIG.club.logo);
+    const opponentImg = await safeLoadImage(data.opponentLogo);
+    drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
 
-    // Datum/Uhrzeit jetzt etwas größer (LAYOUT.matchMeta) als vorher.
-    ctx.font = `600 ${LAYOUT.matchMeta.fontSize}px ${FONTS.condensed}`;
-    drawLetterSpaced(
-      ctx,
-      `${data.dateLine || ""} · ${data.timeLine || ""}`.toUpperCase(),
-      textX,
-      box.y + rowH * 2 - 2,
-      1
-    );
-
-    ctx.font = `600 ${LAYOUT.matchMeta.fontSize}px ${FONTS.condensed}`;
-    drawLetterSpaced(ctx, (data.venueLine || "").toUpperCase(), textX, box.y + rowH * 3 - 2, 1);
-
-    // Spieltag-Nr unten
-    ctx.fillStyle = c.cream;
-    ctx.font = `600 ${LAYOUT.matchday.fontSize}px ${FONTS.condensed}`;
-    ctx.textAlign = "center";
-    drawLetterSpaced(
-      ctx,
-      `SPIELTAG ${data.matchday || ""}`,
-      LAYOUT.matchday.centerX,
-      LAYOUT.matchday.y,
-      3,
-      "center"
-    );
-    ctx.textAlign = "left";
+    await drawSponsorBar(ctx);
   }
 
   // -------------------------------------------------------------------------
