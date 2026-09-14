@@ -16,22 +16,23 @@ window.Renderer = (function () {
   const LAYOUT = {
     teamTag: {
       x: 64,
-      y: 62,
-      barW: 10,
-      fontSize: 48,
-      gapAfterBar: 26,
+      y: 84,
+      barW: 11,
+      fontSize: 56,
+      gapAfterBar: 28,
     },
     metaLine: { centerX: 540, y: 560, fontSize: 42 },
     headline: { centerX: 540, y: 748, maxFontSize: 132, minFontSize: 56, maxWidthRatio: 0.9 },
-    venueLine: { centerX: 540, y: 895, fontSize: 34 },
+    venueLine: { centerX: 540, y: 925, fontSize: 34 },
     score: { centerX: 540, centerY: 420, fontSize: 280 },
-    outcome: { centerX: 540, y: 555, fontSize: 56 },
+    outcome: { centerX: 540, y: 641, fontSize: 56 },
     scorers: {
-      centerY: 655,
+      centerY: 807,
       rowGap: 46,
       fontSize: 32,
       crestSize: 34,
       colGapFromCenter: 24,
+      dividerHalfHeight: 29,
     },
     matchup: {
       centerY: 1080,
@@ -332,6 +333,15 @@ window.Renderer = (function () {
       const sc = LAYOUT.scorers;
       const ownScorers = data.scorers.filter(scorerIsOwnTeam);
       const oppScorers = data.scorers.filter((s2) => !scorerIsOwnTeam(s2));
+
+      // Dünner Trennstrich zwischen den beiden Team-Spalten, wie im
+      // Original-Design von vor einigen Wochen.
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(W / 2, sc.centerY - sc.dividerHalfHeight);
+      ctx.lineTo(W / 2, sc.centerY + sc.dividerHalfHeight);
+      ctx.stroke();
 
       ctx.font = `900 ${sc.fontSize}px ${FONTS.condensed}`;
       ctx.fillStyle = c.cream || "#E9EFE9";
