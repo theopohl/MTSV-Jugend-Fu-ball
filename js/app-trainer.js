@@ -22,37 +22,17 @@
     upcomingList: document.getElementById("upcomingList"),
     photoUpload: document.getElementById("photoUpload"),
     teamPhotoGrid: document.getElementById("teamPhotoGrid"),
-    opponentChipList: document.getElementById("opponentChipList"),
-    refreshOpponentsBtn: document.getElementById("refreshOpponentsBtn"),
-    opponentNameField: document.getElementById("opponentNameField"),
-    opponentLogoLabel: document.getElementById("opponentLogoLabel"),
-    opponentLogoPreviewField: document.getElementById("opponentLogoPreviewField"),
-    opponentLogoPreview: document.getElementById("opponentLogoPreview"),
-    opponentLogoPreviewEmpty: document.getElementById("opponentLogoPreviewEmpty"),
     newOpponentName: document.getElementById("newOpponentName"),
-    newOpponentNamesList: document.getElementById("opponentNamesList"),
     newOpponentLogo: document.getElementById("newOpponentLogo"),
     createOpponentBtn: document.getElementById("createOpponentBtn"),
     createOpponentMsg: document.getElementById("createOpponentMsg"),
     newFixtureForm: document.getElementById("newFixtureForm"),
-    newFixtureType: document.getElementById("newFixtureType"),
-    newFixtureMatchdayField: document.getElementById("newFixtureMatchdayField"),
-    newFixtureOpponentChips: document.getElementById("newFixtureOpponentChips"),
-    newFixtureOpponentInput: document.getElementById("newFixtureOpponentInput"),
   };
 
-  const NEW_OPPONENT_VALUE = "__new__";
   let opponentsCache = null;
-  let selectedOpponentId = NEW_OPPONENT_VALUE;
-  let selectedFixtureOpponentId = NEW_OPPONENT_VALUE;
-
-  async function ensureOpponentsCache() {
-    if (!opponentsCache) opponentsCache = await window.Db.getOpponents();
-    return opponentsCache;
-  }
 
   async function getOrCreateOpponent(name) {
-    await ensureOpponentsCache();
+    if (!opponentsCache) opponentsCache = await window.Db.getOpponents();
     const trimmed = name.trim();
     let existing = opponentsCache.find(
       (o) => o.name.toLowerCase() === trimmed.toLowerCase()
@@ -62,123 +42,6 @@
     opponentsCache.push(created);
     return created;
   }
-
-  // ---- Gegner anlegen / Logo pflegen ------------------------------------
-
-  async function loadOpponentSelect(selectId) {
-    opponentsCache = await window.Db.getOpponents();
-    selectedOpponentId =
-      selectId && opponentsCache.some((o) => o.id === selectId) ? selectId : NEW_OPPONENT_VALUE;
-    renderOpponentChips();
-    updateOpponentFormMode();
-    renderFixtureOpponentChips();
-    renderOpponentNameSuggestions();
-  }
-
-  // Autovervollständigung im Namensfeld: Browser-Vorschlagsliste (datalist)
-  // plus automatisches Umschalten auf "vorhandener Gegner", sobald der
-  // getippte Name exakt (Groß-/Kleinschreibung egal) zu einem vorhandenen
-  // Gegner passt – ganz ohne den Chip extra anklicken zu müssen.
-  function renderOpponentNameSuggestions() {
-    if (!el.newOpponentNamesList) return;
-    el.newOpponentNamesList.innerHTML = "";
-    (opponentsCache || []).forEach((o) => {
-      const opt = document.createElement("option");
-      opt.value = o.name;
-      el.newOpponentNamesList.appendChild(opt);
-    });
-  }
-
-  el.newOpponentName.addEventListener("input", () => {
-    if (selectedOpponentId !== NEW_OPPONENT_VALUE) return;
-    const typed = el.newOpponentName.value.trim().toLowerCase();
-    if (!typed) return;
-    const match = (opponentsCache || []).find((o) => o.name.toLowerCase() === typed);
-    if (match) selectOpponent(match.id);
-  });
-
-  // ---- Gegner-Auswahl im "Neues Spiel anlegen"-Formular ------------------
-
-  function renderFixtureOpponentChips() {
-    if (!el.newFixtureOpponentChips) return;
-    el.newFixtureOpponentChips.innerHTML = "";
-
-    const newChip = document.createElement("div");
-    newChip.className = "chip" + (selectedFixtureOpponentId === NEW_OPPONENT_VALUE ? " active" : "");
-    newChip.textContent = "+ neuer Gegner";
-    newChip.addEventListener("click", () => selectFixtureOpponent(NEW_OPPONENT_VALUE));
-    el.newFixtureOpponentChips.appendChild(newChip);
-
-    (opponentsCache || []).forEach((o) => {
-      const chip = document.createElement("div");
-      chip.className = "chip" + (o.id === selectedFixtureOpponentId ? " active" : "");
-      chip.textContent = o.name;
-      chip.addEventListener("click", () => selectFixtureOpponent(o.id));
-      el.newFixtureOpponentChips.appendChild(chip);
-    });
-  }
-
-  function selectFixtureOpponent(id) {
-    selectedFixtureOpponentId = id;
-    renderFixtureOpponentChips();
-    const isNew = id === NEW_OPPONENT_VALUE;
-    el.newFixtureOpponentInput.style.display = isNew ? "" : "none";
-    el.newFixtureOpponentInput.required = isNew;
-    if (isNew) el.newFixtureOpponentInput.value = "";
-  }
-
-  function renderOpponentChips() {
-    el.opponentChipList.innerHTML = "";
-
-    const newChip = document.createElement("div");
-    newChip.className = "chip" + (selectedOpponentId === NEW_OPPONENT_VALUE ? " active" : "");
-    newChip.textContent = "+ neuer Gegner";
-    newChip.addEventListener("click", () => selectOpponent(NEW_OPPONENT_VALUE));
-    el.opponentChipList.appendChild(newChip);
-
-    opponentsCache.forEach((o) => {
-      const chip = document.createElement("div");
-      chip.className = "chip" + (o.id === selectedOpponentId ? " active" : "");
-      chip.textContent = o.name;
-      chip.addEventListener("click", () => selectOpponent(o.id));
-      el.opponentChipList.appendChild(chip);
-    });
-  }
-
-  function selectOpponent(id) {
-    selectedOpponentId = id;
-    renderOpponentChips();
-    updateOpponentFormMode();
-  }
-
-  function updateOpponentFormMode() {
-    const isNew = selectedOpponentId === NEW_OPPONENT_VALUE;
-    el.opponentNameField.style.display = isNew ? "" : "none";
-    el.opponentLogoLabel.textContent = isNew ? "Logo (optional)" : "Logo hinzufügen/ersetzen (optional)";
-    el.createOpponentBtn.textContent = isNew ? "Gegner speichern" : "Logo speichern";
-    el.newOpponentName.value = "";
-    el.newOpponentLogo.value = "";
-    el.createOpponentMsg.textContent = "";
-
-    el.opponentLogoPreviewField.style.display = isNew ? "none" : "";
-    if (!isNew) {
-      const opponent = (opponentsCache || []).find((o) => o.id === selectedOpponentId);
-      const logoUrl = opponent ? opponent.logo_url : null;
-      el.opponentLogoPreview.src = logoUrl || "";
-      el.opponentLogoPreview.style.display = logoUrl ? "" : "none";
-      el.opponentLogoPreviewEmpty.style.display = logoUrl ? "none" : "";
-    }
-  }
-
-  el.refreshOpponentsBtn.addEventListener("click", async () => {
-    el.refreshOpponentsBtn.disabled = true;
-    try {
-      const current = selectedOpponentId;
-      await loadOpponentSelect(current !== NEW_OPPONENT_VALUE ? current : null);
-    } finally {
-      el.refreshOpponentsBtn.disabled = false;
-    }
-  });
 
   function paramTeamSlug() {
     return new URLSearchParams(location.search).get("team");
@@ -209,8 +72,6 @@
     await refreshNextMatch();
     await refreshUpcoming();
     await refreshPhotos();
-    // Gegner sind mannschaftsübergreifend – Liste bei jedem Wechsel frisch halten.
-    await loadOpponentSelect(selectedOpponentId !== NEW_OPPONENT_VALUE ? selectedOpponentId : null);
   }
 
   async function refreshNextMatch() {
@@ -224,7 +85,7 @@
     const opponentName = f.opponent ? f.opponent.name : "(kein Gegner)";
     const ort = f.is_home ? f.venue || state.team.default_venue : `Auswärts bei ${opponentName}`;
     el.nextMatchInfo.innerHTML = `
-      <strong>${window.Caption.matchLine(f)} · ${opponentName}</strong><br/>
+      <strong>Spieltag ${f.matchday || "?"} · ${opponentName}</strong><br/>
       ${window.Caption.formatDateLong(f.date)} · ${window.Caption.formatTime(f.kickoff)} Uhr<br/>
       ${ort}
     `;
@@ -240,12 +101,25 @@
     renderScorerRows();
   }
 
+  // Torschützen-Zeilen: Name, Minute UND jetzt zusätzlich eine Auswahl, für
+  // welches Team getroffen wurde. Ohne dieses Feld konnte die Grafik nicht
+  // wissen, wer für wen getroffen hat – der Post zeigte Torschützen dann an
+  // der falschen Mannschaft an. "own" = eigenes Team, "gegner" = Gegner.
   function renderScorerRows() {
+    const opponentName = state.nextFixture && state.nextFixture.opponent
+      ? state.nextFixture.opponent.name
+      : "Gegner";
+
     el.scorerRows.innerHTML = "";
     state.scorers.forEach((s, i) => {
+      const team = s.team || "own";
       const row = document.createElement("div");
       row.className = "scorer-row";
       row.innerHTML = `
+        <select data-idx="${i}" data-field="team" style="max-width:150px;">
+          <option value="own" ${team === "own" ? "selected" : ""}>${state.team ? state.team.name : "Eigenes Team"}</option>
+          <option value="gegner" ${team === "gegner" ? "selected" : ""}>${opponentName}</option>
+        </select>
         <input type="text" placeholder="Name oder Nr." data-idx="${i}" data-field="name" value="${s.name || ""}" />
         <input type="number" placeholder="Minute" min="1" max="130" style="max-width:90px;" data-idx="${i}" data-field="minute" value="${s.minute || ""}" />
         <button type="button" data-remove="${i}">✕</button>
@@ -253,8 +127,9 @@
       el.scorerRows.appendChild(row);
     });
 
-    el.scorerRows.querySelectorAll("input").forEach((input) => {
-      input.addEventListener("input", (e) => {
+    el.scorerRows.querySelectorAll("input, select").forEach((input) => {
+      const eventName = input.tagName === "SELECT" ? "change" : "input";
+      input.addEventListener(eventName, (e) => {
         const idx = Number(e.target.dataset.idx);
         const field = e.target.dataset.field;
         state.scorers[idx][field] = field === "minute" ? Number(e.target.value) : e.target.value;
@@ -269,7 +144,8 @@
   }
 
   el.addScorerBtn.addEventListener("click", () => {
-    state.scorers.push({ name: "", minute: "" });
+    // Neue Zeile bekommt standardmäßig "eigenes Team" als Vorauswahl.
+    state.scorers.push({ name: "", minute: "", team: "own" });
     renderScorerRows();
   });
 
@@ -277,7 +153,9 @@
     if (!state.nextFixture) return;
     el.saveResultBtn.disabled = true;
     try {
-      const scorers = state.scorers.filter((s) => s.name && s.minute);
+      const scorers = state.scorers
+        .filter((s) => s.name && s.minute)
+        .map((s) => ({ ...s, team: s.team || "own" }));
       await window.Db.saveResult(state.nextFixture.id, {
         own_goals: Number(el.ownGoals.value),
         opp_goals: Number(el.oppGoals.value),
@@ -309,7 +187,7 @@
       const opponentName = f.opponent ? f.opponent.name : "(kein Gegner)";
       item.innerHTML = `
         <div>
-          <strong>${window.Caption.matchLine(f)} · ${opponentName}</strong>
+          <strong>Spieltag ${f.matchday || "?"} · ${opponentName}</strong>
           <div class="meta">${f.date || ""} ${f.kickoff || ""} · ${f.is_home ? "Heim" : "Auswärts"}</div>
         </div>
         <div>
@@ -359,86 +237,35 @@
   });
 
   el.createOpponentBtn.addEventListener("click", async () => {
-    el.createOpponentBtn.disabled = true;
-    try {
-      if (selectedOpponentId === NEW_OPPONENT_VALUE) {
-        const name = el.newOpponentName.value.trim();
-        if (!name) {
-          el.createOpponentMsg.textContent = "Bitte einen Namen eingeben.";
-          return;
-        }
-        await ensureOpponentsCache();
-        const duplicate = opponentsCache.find(
-          (o) => o.name.toLowerCase() === name.toLowerCase()
-        );
-        if (duplicate) {
-          await loadOpponentSelect(duplicate.id);
-          el.createOpponentMsg.textContent = `Gegner "${name}" existiert bereits – bitte aus der Liste auswählen.`;
-          return;
-        }
-        const logoFile = el.newOpponentLogo.files[0] || null;
-        const created = await window.Db.createOpponent({ name, logoFile });
-        await loadOpponentSelect(created.id);
-        el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
-      } else {
-        const opponent = opponentsCache.find((o) => o.id === selectedOpponentId);
-        const logoFile = el.newOpponentLogo.files[0] || null;
-        if (!logoFile) {
-          el.createOpponentMsg.textContent = "Bitte zuerst ein Logo auswählen.";
-          return;
-        }
-        await window.Db.updateOpponentLogo(opponent.id, opponent.name, logoFile);
-        await loadOpponentSelect(opponent.id);
-        el.createOpponentMsg.textContent = `Logo für "${opponent.name}" aktualisiert.`;
-      }
-    } catch (err) {
-      console.error(err);
-      el.createOpponentMsg.textContent = "Fehler: " + err.message;
-    } finally {
-      el.createOpponentBtn.disabled = false;
-    }
+    const name = el.newOpponentName.value.trim();
+    if (!name) return;
+    const logoFile = el.newOpponentLogo.files[0] || null;
+    await window.Db.createOpponent({ name, logoFile });
+    el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
+    el.newOpponentName.value = "";
+    el.newOpponentLogo.value = "";
   });
-
-  function updateNewFixtureTypeMode() {
-    const isLiga = el.newFixtureType.value === "liga";
-    el.newFixtureMatchdayField.style.display = isLiga ? "" : "none";
-    el.newFixtureMatchdayField.querySelector("input").required = isLiga;
-  }
-  el.newFixtureType.addEventListener("change", updateNewFixtureTypeMode);
-  updateNewFixtureTypeMode();
-  selectFixtureOpponent(NEW_OPPONENT_VALUE);
 
   el.newFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.newFixtureForm);
-    const opponent =
-      selectedFixtureOpponentId !== NEW_OPPONENT_VALUE
-        ? opponentsCache.find((o) => o.id === selectedFixtureOpponentId)
-        : await getOrCreateOpponent(fd.get("opponent"));
+    const opponent = await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
-    const type = fd.get("type") || "liga";
     await window.Db.createFixture({
       team_id: state.team.id,
-      type,
-      matchday: type === "liga" && fd.get("matchday") ? Number(fd.get("matchday")) : null,
+      matchday: Number(fd.get("matchday")),
       opponent_id: opponent.id,
       date: fd.get("date"),
       kickoff: fd.get("kickoff"),
       venue: fd.get("venue") || (isHome ? state.team.default_venue : opponent.name),
       is_home: isHome,
-      competition: type === "liga" ? state.team.competition : null,
+      competition: state.team.competition,
       status: "geplant",
     });
     el.newFixtureForm.reset();
-    updateNewFixtureTypeMode();
-    selectFixtureOpponent(NEW_OPPONENT_VALUE);
     await refreshUpcoming();
     await refreshNextMatch();
-    // Falls dabei per Freitext ein neuer Gegner entstanden ist: Liste aktuell
-    // halten und den (neu angelegten oder wiederverwendeten) Gegner im
-    // "Gegner anlegen"-Bereich vorauswählen.
-    await loadOpponentSelect(opponent.id);
   });
 
   await loadTeams();

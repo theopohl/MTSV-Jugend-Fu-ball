@@ -11,68 +11,48 @@ window.Renderer = (function () {
     condensed: '"Saira Condensed"',
   };
 
-  const WEEKDAYS_SHORT = ["SO", "MO", "DI", "MI", "DO", "FR", "SA"];
-  const MONTHS = [
-    "JANUAR",
-    "FEBRUAR",
-    "MÄRZ",
-    "APRIL",
-    "MAI",
-    "JUNI",
-    "JULI",
-    "AUGUST",
-    "SEPTEMBER",
-    "OKTOBER",
-    "NOVEMBER",
-    "DEZEMBER",
-  ];
-
   const LAYOUT = {
-    tag: {
-      x: 0.06 * W,
-      y: 0.055 * H,
-      barWidth: 8,
-      barHeight: 32,
-      barRadius: 4,
-      gap: 14,
-      fontSize: 25,
-      letterSpacing: 1.5,
+    flag: { rightMargin: 91, width: 55, top: 0, height: 207 },
+    presenter: {
+      centerX: 540,
+      labelY: 88,
+      labelSize: 23,
+      brandY: 168,
+      brandSize: 66,
     },
-    sponsorBar: {
-      height: 0.072 * H,
-      borderHeight: 2,
+    // Mannschafts-Tag: für die Ergebnis-Vorlage und die Ankündigung getrennt
+    // einstellbar, damit die Ankündigung größer wirken kann als das Ergebnis.
+    chip: {
+      left: 64,
+      top: 250,
+      height: 66,
+      paddingX: 30,
+      fontSize: 32,
     },
-    duel: {
-      boxSize: 150,
-      radius: 26,
-      leftCenterX: 0.3 * W,
-      rightCenterX: 0.7 * W,
-      vsFontSize: 60,
-      nameFontSize: 30,
-      nameGapBelow: 34,
+    chipAnnounce: {
+      left: 64,
+      top: 244,
+      height: 76,
+      paddingX: 32,
+      fontSize: 38,
     },
-    ergebnis: {
-      scoreCenterY: 0.31 * H,
-      scoreFontSize: 230,
-      resultWordCenterY: 0.475 * H,
-      resultWordFontSize: 54,
-      scorersCenterY: 0.598 * H,
-      scorersFontSize: 34,
-      scorersLineHeight: 44,
-      dividerTopY: 0.575 * H,
-      dividerBottomY: 0.618 * H,
-      duelCenterY: 0.78 * H,
+    logoBoxResult: { x: 302, y: 857, w: 476, h: 179, radius: 26, padding: 26, gap: 40 },
+    logoBoxAnnounce: { x: 64, y: 1050, w: 316, h: 179, radius: 26, padding: 24, gap: 0 },
+    score: { centerX: 540, centerY: 585, fontSize: 230 },
+    // Torschützen jetzt zweispaltig nach Team getrennt (eigene Mannschaft
+    // links, Gegner rechts), mit kleinem Wappen vor jedem Namen.
+    scorers: {
+      centerY: 1220,
+      rowGap: 46,
+      fontSize: 32,
+      crestSize: 34,
+      colGapFromCenter: 24,
     },
-    ankuendigung: {
-      smallLineCenterY: 0.415 * H,
-      smallLineFontSize: 26,
-      headlineStartY: 0.515 * H,
-      headlineMinFontSize: 40,
-      headlineMaxFontSize: 150,
-      venueCenterY: 0.685 * H,
-      venueFontSize: 28,
-      duelCenterY: 0.8 * H,
-    },
+    headline: { x: 64, bottom: 900, fontSize: 92, lineHeight: 96, skewDeg: -11 },
+    matchInfoRight: { gap: 40 },
+    // Datum/Uhrzeit bei der Ankündigung etwas größer.
+    matchMeta: { fontSize: 34 },
+    matchday: { centerX: 540, y: 1300, fontSize: 26 },
   };
 
   const COLORS = () => window.APP_CONFIG.colors;
@@ -98,7 +78,6 @@ window.Renderer = (function () {
     if (document.fonts && document.fonts.ready) {
       await document.fonts.load(`900 100px ${FONTS.black}`);
       await document.fonts.load(`900 100px ${FONTS.condensed}`);
-      await document.fonts.load(`700 100px ${FONTS.condensed}`);
       await document.fonts.load(`600 100px ${FONTS.condensed}`);
       await document.fonts.ready;
     }
@@ -113,11 +92,6 @@ window.Renderer = (function () {
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
-  }
-
-  function measureLetterSpaced(ctx, text, spacing) {
-    const widths = [...text].map((ch) => ctx.measureText(ch).width);
-    return widths.reduce((a, b) => a + b, 0) + spacing * (text.length - 1);
   }
 
   function drawLetterSpaced(ctx, text, x, y, spacing, align = "left") {
@@ -137,13 +111,257 @@ window.Renderer = (function () {
     return total;
   }
 
+  function drawFlagCorner(ctx) {
+    const c = COLORS();
+    const { rightMargin, width, top, height } = LAYOUT.flag;
+    const x = W - rightMargin - width;
+    const bandH = height / 3;
+    ctx.fillStyle = c.flagGreen;
+    ctx.fillRect(x, top, width, bandH);
+    ctx.fillStyle = c.flagWhite;
+    ctx.fillRect(x, top + bandH, width, bandH);
+    ctx.fillStyle = c.flagRed;
+    ctx.fillRect(x, top + bandH * 2, width, bandH);
+  }
+
+  function drawPresenter(ctx, label, brand) {
+    const { centerX, labelY, labelSize, brandY, brandSize } = LAYOUT.presenter;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `600 ${labelSize}px ${FONTS.condensed}`;
+    ctx.textBaseline = "alphabetic";
+    drawLetterSpaced(ctx, label.toUpperCase(), centerX, labelY, 2.5, "center");
+
+    ctx.font = `900 ${brandSize}px ${FONTS.black}`;
+    ctx.textAlign = "center";
+    ctx.fillText(brand.toUpperCase(), centerX, brandY);
+    ctx.textAlign = "left";
+  }
+
+  // drawChip: "border" steuert, ob die Pille einen sichtbaren Rand
+  // (inkl. der Linie unter dem Text) bekommt. Für den Ergebnis-Post ist das
+  // jetzt standardmäßig AUS, damit dort kein Strich unter der Mannschafts-
+  // Schrift erscheint. Für die Ankündigung bleibt der Rahmen an und die
+  // Pille ist insgesamt größer (siehe LAYOUT.chipAnnounce).
+  function drawChip(ctx, text, layout = LAYOUT.chip, opts = {}) {
+    const { border = true } = opts;
+    const { left, top, height, paddingX, fontSize } = layout;
+    ctx.font = `600 ${fontSize}px ${FONTS.condensed}`;
+    const upper = text.toUpperCase();
+    const letterSpacing = 1.5;
+    const widths = [...upper].map((ch) => ctx.measureText(ch).width);
+    const textWidth = widths.reduce((a, b) => a + b, 0) + letterSpacing * (upper.length - 1);
+    const w = textWidth + paddingX * 2;
+
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    roundRectPath(ctx, left, top, w, height, height / 2);
+    ctx.fill();
+    if (border) {
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#FFFFFF";
+    const textY = top + height / 2 + fontSize * 0.35;
+    drawLetterSpaced(ctx, upper, left + paddingX, textY, letterSpacing, "left");
+    return w;
+  }
+
   function fitContain(img, slotW, slotH) {
     const scale = Math.min(slotW / img.width, slotH / img.height);
     return { w: img.width * scale, h: img.height * scale };
   }
 
-  function wrapText(ctx, text, maxWidth) {
-    const words = text.split(" ");
+  function drawLogoBox(ctx, box, mtsvImg, opponentImg) {
+    ctx.save();
+    ctx.fillStyle = "#FFFFFF";
+    roundRectPath(ctx, box.x, box.y, box.w, box.h, box.radius);
+    ctx.fill();
+    ctx.clip();
+
+    const slotW = (box.w - box.padding * 2 - box.gap) / 2;
+    const slotH = box.h - box.padding * 2;
+
+    const leftSlotX = box.x + box.padding;
+    const rightSlotX = leftSlotX + slotW + box.gap;
+    const slotY = box.y + box.padding;
+
+    if (mtsvImg) {
+      const size = fitContain(mtsvImg, slotW, slotH);
+      const dx = leftSlotX + (slotW - size.w) / 2;
+      const dy = slotY + (slotH - size.h) / 2;
+      ctx.drawImage(mtsvImg, dx, dy, size.w, size.h);
+    }
+    if (opponentImg) {
+      const size = fitContain(opponentImg, slotW, slotH);
+      const dx = rightSlotX + (slotW - size.w) / 2;
+      const dy = slotY + (slotH - size.h) / 2;
+      ctx.drawImage(opponentImg, dx, dy, size.w, size.h);
+    } else {
+      ctx.fillStyle = "#C9D2CC";
+      ctx.font = `600 20px ${FONTS.condensed}`;
+      ctx.textAlign = "center";
+      ctx.fillText("GEGNER-LOGO", rightSlotX + slotW / 2, slotY + slotH / 2 + 7);
+      ctx.textAlign = "left";
+    }
+    ctx.restore();
+  }
+
+  // Zeichnet ein kleines, rundes Wappen-Icon (für die Torschützen-Zeilen).
+  function drawSmallCrest(ctx, img, cx, cy, size) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+    ctx.clip();
+    if (img) {
+      const fit = fitContain(img, size * 0.86, size * 0.86);
+      ctx.drawImage(img, cx - fit.w / 2, cy - fit.h / 2, fit.w, fit.h);
+    }
+    ctx.restore();
+  }
+
+  // Ermittelt, ob ein Torschütze für die eigene Mannschaft oder den Gegner
+  // getroffen hat. Erwartet an sc.team einen der Werte "own"/"mtsv"/"heim"
+  // (eigenes Team) oder "opp"/"gegner"/"away" (Gegner). Fehlt das Feld
+  // (ältere Datensätze ohne Team-Zuordnung), wird als Fallback die eigene
+  // Mannschaft angenommen, damit nichts unsichtbar verschwindet – für
+  // korrekte Zuordnung MUSS das Eingabeformular künftig ein Team pro
+  // Torschütze mitspeichern.
+  function scorerIsOwnTeam(sc) {
+    const t = (sc.team || "").toString().toLowerCase();
+    if (["opp", "opponent", "gegner", "away", "auswaerts", "auswärts"].includes(t)) {
+      return false;
+    }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Ergebnis-Post
+  // -------------------------------------------------------------------------
+
+  async function renderErgebnis(ctx, data) {
+    const c = COLORS();
+    const jersey = await loadImage(window.APP_CONFIG.jerseyBg);
+    ctx.drawImage(jersey, 0, 0, W, H);
+
+    drawFlagCorner(ctx);
+    drawPresenter(ctx, "Das Ergebnis wird präsentiert von", window.APP_CONFIG.club.presenter);
+
+    const chipText = data.competition
+      ? `${data.teamName} · ${data.competition}`
+      : data.teamName;
+    // Kein Rahmen/Strich mehr unter der Mannschafts-Schrift beim Ergebnis-Post.
+    drawChip(ctx, chipText, LAYOUT.chip, { border: false });
+
+    // Spielstand
+    const s = LAYOUT.score;
+    ctx.fillStyle = c.cream;
+    ctx.font = `900 ${s.fontSize}px ${FONTS.black}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${data.ownGoals}:${data.oppGoals}`, s.centerX, s.centerY);
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+
+    // Logo-Box
+    const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
+    const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
+    drawLogoBox(ctx, LAYOUT.logoBoxResult, mtsvImg, opponentImg);
+
+    // Torschützen – nach Team getrennt: eigene Mannschaft links (mit
+    // eigenem Wappen), Gegner rechts (mit Gegner-Wappen). So stehen die
+    // Namen jetzt bei der richtigen Mannschaft statt alle in einer Reihe.
+    if (data.scorers && data.scorers.length) {
+      const sc = LAYOUT.scorers;
+      const ownScorers = data.scorers.filter(scorerIsOwnTeam);
+      const oppScorers = data.scorers.filter((s2) => !scorerIsOwnTeam(s2));
+
+      ctx.font = `900 ${sc.fontSize}px ${FONTS.condensed}`;
+      ctx.fillStyle = c.cream;
+
+      const rowCount = Math.max(ownScorers.length, oppScorers.length, 1);
+      const startY = sc.centerY - ((rowCount - 1) * sc.rowGap) / 2;
+
+      const leftColX = W / 2 - sc.colGapFromCenter;
+      const rightColX = W / 2 + sc.colGapFromCenter;
+
+      ownScorers.forEach((entry, i) => {
+        const y = startY + i * sc.rowGap;
+        const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
+        ctx.textAlign = "right";
+        ctx.fillText(label, leftColX - sc.crestSize * 0.9, y + sc.fontSize * 0.35);
+        drawSmallCrest(ctx, mtsvImg, leftColX - sc.crestSize / 2, y + sc.fontSize * 0.1, sc.crestSize);
+      });
+
+      oppScorers.forEach((entry, i) => {
+        const y = startY + i * sc.rowGap;
+        const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
+        drawSmallCrest(ctx, opponentImg, rightColX + sc.crestSize / 2, y + sc.fontSize * 0.1, sc.crestSize);
+        ctx.textAlign = "left";
+        ctx.fillText(label, rightColX + sc.crestSize * 0.9, y + sc.fontSize * 0.35);
+      });
+
+      ctx.textAlign = "left";
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Ankündigungs-Post
+  // -------------------------------------------------------------------------
+
+  function drawAnnounceBackground(ctx, photoImg) {
+    if (photoImg) {
+      const scale = Math.max(W / photoImg.width, H / photoImg.height);
+      const dw = photoImg.width * scale;
+      const dh = photoImg.height * scale;
+      ctx.drawImage(photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } else {
+      ctx.fillStyle = "#123322";
+      ctx.fillRect(0, 0, W, H);
+      // Kreuzraster-Platzhaltermuster
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      const step = 34;
+      for (let i = -H; i < W + H; i += step) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + H, H);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(i, H);
+        ctx.lineTo(i + H, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.font = `600 26px ${FONTS.condensed}`;
+      ctx.textAlign = "center";
+      drawLetterSpaced(ctx, "MANNSCHAFTSFOTO", W / 2, 490, 3, "center");
+      ctx.restore();
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, "rgba(6,26,17,0.15)");
+    gradient.addColorStop(0.55, "rgba(6,26,17,0.55)");
+    gradient.addColorStop(1, "rgba(6,26,17,0.94)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawHeadline(ctx, text) {
+    const h = LAYOUT.headline;
+    ctx.save();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `900 ${h.fontSize}px ${FONTS.condensed}`;
+    ctx.textAlign = "left";
+
+    const words = text.toUpperCase().split(" ");
+    const maxWidth = W - h.x - 60;
     const lines = [];
     let line = "";
     for (const word of words) {
@@ -156,402 +374,77 @@ window.Renderer = (function () {
       }
     }
     if (line) lines.push(line);
-    return lines;
-  }
 
-  // Wie wrapText, garantiert aber maximal `maxLines` Zeilen: überzählige
-  // Zeilen werden in die letzte Zeile gequetscht statt (wie bei purem
-  // ctx.fillText mit lines.slice(0, 2)) stillschweigend zu verschwinden.
-  function wrapTextMaxLines(ctx, text, maxWidth, maxLines) {
-    const lines = wrapText(ctx, text, maxWidth);
-    if (lines.length <= maxLines) return lines;
-    const head = lines.slice(0, maxLines - 1);
-    head.push(lines.slice(maxLines - 1).join(" "));
-    return head;
-  }
+    const totalHeight = lines.length * h.lineHeight;
+    let y = h.bottom - totalHeight + h.lineHeight * 0.8;
 
-  function resultKind(own, opp) {
-    if (own > opp) return "sieg";
-    if (own < opp) return "niederlage";
-    return "remis";
-  }
-
-  function parseDate(dateStr) {
-    if (!dateStr) return null;
-    const [y, m, d] = dateStr.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  }
-
-  // Test- und Pokalspiele zählen nicht als Liga-Spieltag: keine Spieltag-Nr.
-  // in der kleinen Zeile, und als Fallback-Überschrift/-Tag, falls kein
-  // Wettbewerb hinterlegt ist.
-  function typeLabel(type) {
-    if (type === "testspiel") return "Testspiel";
-    if (type === "pokal") return "Pokalspiel";
-    return null;
-  }
-
-  function isLigaType(type) {
-    return type !== "testspiel" && type !== "pokal";
-  }
-
-  function formatSmallLine(matchday, dateStr, timeStr, type) {
-    const d = parseDate(dateStr);
-    const dateBit = d ? `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}. ${MONTHS[d.getMonth()]}` : "";
-    const timeBit = timeStr ? `${timeStr.slice(0, 5)} UHR` : "";
-    const matchBit = isLigaType(type) ? `SPIELTAG ${matchday || "?"}` : null;
-    return [matchBit, dateBit, timeBit].filter(Boolean).join(" · ");
-  }
-
-  // -------------------------------------------------------------------------
-  // Gemeinsame Bausteine: Mannschafts-Tag, Sponsorleiste, Duell-Block
-  // -------------------------------------------------------------------------
-
-  function drawTeamTag(ctx, text) {
-    const t = LAYOUT.tag;
-    ctx.fillStyle = "#FFFFFF";
-    roundRectPath(ctx, t.x, t.y, t.barWidth, t.barHeight, t.barRadius);
-    ctx.fill();
-
-    ctx.font = `700 ${t.fontSize}px ${FONTS.condensed}`;
-    const textY = t.y + t.barHeight / 2 + t.fontSize * 0.35;
-    drawLetterSpaced(ctx, text.toUpperCase(), t.x + t.barWidth + t.gap, textY, t.letterSpacing, "left");
-  }
-
-  function drawSponsorBar(ctx, logoImg) {
-    const c = COLORS();
-    const bar = LAYOUT.sponsorBar;
-    const barY = H - bar.height;
-
-    ctx.fillStyle = c.cream;
-    ctx.fillRect(0, barY, W, bar.borderHeight);
-    ctx.fillStyle = c.sponsorBarDark;
-    ctx.fillRect(0, barY + bar.borderHeight, W, bar.height - bar.borderHeight);
-
-    const centerY = barY + bar.borderHeight + (bar.height - bar.borderHeight) / 2;
-    const label = "PRÄSENTIERT VON";
-    const labelSpacing = 1.5;
-    const labelFontSize = 22;
-    ctx.font = `600 ${labelFontSize}px ${FONTS.condensed}`;
-    const labelWidth = measureLetterSpaced(ctx, label, labelSpacing);
-
-    const logoH = (bar.height - bar.borderHeight) * 0.4;
-    const logoGap = 14;
-    const logoW = logoImg ? (logoImg.width / logoImg.height) * logoH : 0;
-    const totalWidth = labelWidth + (logoImg ? logoGap + logoW : 0);
-    let cursorX = (W - totalWidth) / 2;
-
-    ctx.fillStyle = "#FFFFFF";
-    const textY = centerY + labelFontSize * 0.35;
-    drawLetterSpaced(ctx, label, cursorX, textY, labelSpacing, "left");
-    cursorX += labelWidth;
-
-    if (logoImg) {
-      cursorX += logoGap;
-      ctx.drawImage(logoImg, cursorX, centerY - logoH / 2, logoW, logoH);
+    const skew = Math.tan((h.skewDeg * Math.PI) / 180);
+    for (const l of lines) {
+      ctx.save();
+      ctx.transform(1, 0, skew, 1, 0, 0);
+      // Skew um den Textursprung: x-Position anpassen, da transform global wirkt
+      const adjX = h.x - skew * y;
+      ctx.fillText(l, adjX, y);
+      ctx.restore();
+      y += h.lineHeight;
     }
-  }
-
-  function drawDuelSquare(ctx, x, y, size, img) {
-    ctx.save();
-    ctx.fillStyle = "#FFFFFF";
-    roundRectPath(ctx, x, y, size, size, LAYOUT.duel.radius);
-    ctx.fill();
-    ctx.clip();
-    if (img) {
-      const padding = size * 0.14;
-      const slot = size - padding * 2;
-      const fitted = fitContain(img, slot, slot);
-      const dx = x + (size - fitted.w) / 2;
-      const dy = y + (size - fitted.h) / 2;
-      ctx.drawImage(img, dx, dy, fitted.w, fitted.h);
-    } else {
-      ctx.fillStyle = "#C9D2CC";
-      ctx.font = `600 18px ${FONTS.condensed}`;
-      ctx.textAlign = "center";
-      ctx.fillText("LOGO", x + size / 2, y + size / 2 + 6);
-      ctx.textAlign = "left";
-    }
-    ctx.restore();
-  }
-
-  function drawFittedLabel(ctx, text, centerX, y, maxWidth) {
-    ctx.fillStyle = "#FFFFFF";
-    ctx.textAlign = "center";
-    let fontSize = LAYOUT.duel.nameFontSize;
-    ctx.font = `700 ${fontSize}px ${FONTS.condensed}`;
-    while (ctx.measureText(text).width > maxWidth && fontSize > 14) {
-      fontSize -= 1;
-      ctx.font = `700 ${fontSize}px ${FONTS.condensed}`;
-    }
-    ctx.fillText(text, centerX, y);
-    ctx.textAlign = "left";
-  }
-
-  function drawDuelBlock(ctx, centerY, mtsvImg, opponentImg, opponentName, isHome) {
-    const c = COLORS();
-    const d = LAYOUT.duel;
-    const half = d.boxSize / 2;
-
-    // Bei Auswärtsspielen steht der gastgebende Gegner links, MTSV rechts.
-    const away = isHome === false;
-    const leftImg = away ? opponentImg : mtsvImg;
-    const rightImg = away ? mtsvImg : opponentImg;
-    const leftLabel = away ? (opponentName || "").toUpperCase() : "MTSV";
-    const rightLabel = away ? "MTSV" : (opponentName || "").toUpperCase();
-
-    drawDuelSquare(ctx, d.leftCenterX - half, centerY - half, d.boxSize, leftImg);
-    drawDuelSquare(ctx, d.rightCenterX - half, centerY - half, d.boxSize, rightImg);
-
-    ctx.fillStyle = c.cream;
-    ctx.font = `900 ${d.vsFontSize}px ${FONTS.black}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("VS", W / 2, centerY);
-    ctx.textBaseline = "alphabetic";
-
-    const nameY = centerY + half + d.nameGapBelow;
-    const nameMaxWidth = d.boxSize + 30;
-    drawFittedLabel(ctx, leftLabel, d.leftCenterX, nameY, nameMaxWidth);
-    drawFittedLabel(ctx, rightLabel, d.rightCenterX, nameY, nameMaxWidth);
-    ctx.textAlign = "left";
-  }
-
-  // -------------------------------------------------------------------------
-  // Ergebnis-Post
-  // -------------------------------------------------------------------------
-
-  // Minute und Name je Seite als kleine, ausgerichtete Tabelle zeichnen:
-  // die Minute steht rechtsbündig in einer festen Spalte, der Name beginnt
-  // danach immer an derselben X-Position – bei mehreren Torschützen bleibt
-  // die Liste dadurch sauber ausgerichtet statt als ein loser Textblock.
-  function drawScorerColumn(ctx, items, anchorX, side, centerY, lineHeight) {
-    if (!items.length) return;
-
-    const minuteTexts = items.map((s) => `${s.minute}'`);
-    const nameTexts = items.map((s) => (s.name || "").toUpperCase());
-    const minuteColWidth = Math.max(...minuteTexts.map((t) => ctx.measureText(t).width));
-    const maxNameWidth = Math.max(...nameTexts.map((t) => ctx.measureText(t).width));
-    const gutter = 12;
-    const blockWidth = minuteColWidth + gutter + maxNameWidth;
-
-    const minuteRightX = side === "left" ? anchorX - blockWidth + minuteColWidth : anchorX + minuteColWidth;
-    const nameLeftX = minuteRightX + gutter;
-
-    const totalH = items.length * lineHeight;
-    let y = centerY - totalH / 2 + lineHeight * 0.75;
-    items.forEach((s, i) => {
-      ctx.textAlign = "right";
-      ctx.fillText(minuteTexts[i], minuteRightX, y);
-      ctx.textAlign = "left";
-      ctx.fillText(nameTexts[i], nameLeftX, y);
-      y += lineHeight;
-    });
-  }
-
-  function drawScorers(ctx, scorers, L) {
-    const c = COLORS();
-    const mid = Math.ceil(scorers.length / 2);
-    const leftItems = scorers.slice(0, mid);
-    const rightItems = scorers.slice(mid);
-    const lineHeight = L.scorersLineHeight;
-
-    ctx.font = `900 ${L.scorersFontSize}px ${FONTS.condensed}`;
-    ctx.fillStyle = c.cream;
-
-    drawScorerColumn(ctx, leftItems, W * 0.47, "left", L.scorersCenterY, lineHeight);
-    drawScorerColumn(ctx, rightItems, W * 0.53, "right", L.scorersCenterY, lineHeight);
-    ctx.textAlign = "left";
-
-    const maxRows = Math.max(leftItems.length, rightItems.length);
-    const specHalf = (L.dividerBottomY - L.dividerTopY) / 2;
-    const dividerHalf = Math.max((maxRows * lineHeight) / 2, specHalf);
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(W / 2, L.scorersCenterY - dividerHalf);
-    ctx.lineTo(W / 2, L.scorersCenterY + dividerHalf);
-    ctx.stroke();
-  }
-
-  async function renderErgebnis(ctx, data) {
-    const c = COLORS();
-    const L = LAYOUT.ergebnis;
-    const jersey = await loadImage(window.APP_CONFIG.jerseyBg);
-    ctx.drawImage(jersey, 0, 0, W, H);
-
-    const tagSuffix = data.competition || typeLabel(data.type);
-    const tagText = tagSuffix ? `${data.teamName} · ${tagSuffix}` : data.teamName;
-    drawTeamTag(ctx, tagText);
-
-    ctx.fillStyle = c.cream;
-    ctx.font = `900 ${L.scoreFontSize}px ${FONTS.black}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(`${data.ownGoals}:${data.oppGoals}`, W / 2, L.scoreCenterY);
-
-    const kind = resultKind(data.ownGoals, data.oppGoals);
-    const word = kind === "sieg" ? "SIEG" : kind === "niederlage" ? "NIEDERLAGE" : "UNENTSCHIEDEN";
-    ctx.font = `900 ${L.resultWordFontSize}px ${FONTS.black}`;
-    ctx.fillText(word, W / 2, L.resultWordCenterY);
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign = "left";
-
-    if (data.scorers && data.scorers.length) {
-      drawScorers(ctx, data.scorers, L);
-    }
-
-    const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
-    const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName, data.isHome);
-
-    const presenterLogo = window.APP_CONFIG.club.presenterLogo
-      ? await loadImage(window.APP_CONFIG.club.presenterLogo)
-      : null;
-    drawSponsorBar(ctx, presenterLogo);
-  }
-
-  // -------------------------------------------------------------------------
-  // Ankündigungs-Post
-  // -------------------------------------------------------------------------
-
-  function drawPlaceholderBackground(ctx) {
-    ctx.fillStyle = "#123322";
-    ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
-    ctx.lineWidth = 1;
-    const step = 34;
-    for (let i = -H; i < W + H; i += step) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i + H, H);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(i, H);
-      ctx.lineTo(i + H, 0);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.07)";
-    ctx.font = `600 26px ${FONTS.condensed}`;
-    ctx.textAlign = "center";
-    drawLetterSpaced(ctx, "MANNSCHAFTSFOTO", W / 2, 490, 3, "center");
-    ctx.restore();
-  }
-
-  function drawAnnounceBackground(ctx, photoImg) {
-    if (photoImg) {
-      const scale = Math.max(W / photoImg.width, H / photoImg.height);
-      const dw = photoImg.width * scale;
-      const dh = photoImg.height * scale;
-      ctx.drawImage(photoImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
-    } else {
-      drawPlaceholderBackground(ctx);
-    }
-
-    // Leichter grüner Filter über das ganze Bild.
-    ctx.fillStyle = "rgba(22,86,50,0.30)";
-    ctx.fillRect(0, 0, W, H);
-
-    // Dunkler Verlauf nach unten für Lesbarkeit (bis ca. 90% Deckkraft).
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, "rgba(6,20,13,0)");
-    gradient.addColorStop(0.55, "rgba(6,20,13,0.45)");
-    gradient.addColorStop(1, "rgba(6,20,13,0.90)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  // Passt die Schriftgröße der Wettbewerbs-Überschrift an die Textlänge an:
-  // kurze Namen (z. B. "SH-Pokal") werden GROSS gezeichnet, um die Breite
-  // gut auszufüllen, lange Namen (z. B. "Landesliga-Quali") entsprechend
-  // verkleinert – nie ein festes Schriftmaß. Ein Wort läuft einzeilig,
-  // zwei Wörter (bzw. am Bindestrich getrennt) oder zu langer Text auf
-  // maximal zwei Zeilen.
-  function fitHeadline(ctx, words, maxWidth, minSize, maxSize, maxBlockHeight) {
-    for (let fontSize = maxSize; fontSize >= minSize; fontSize -= 2) {
-      ctx.font = `900 ${fontSize}px ${FONTS.condensed}`;
-      const lines = words.length <= 2 && words.length > 0 ? words : wrapText(ctx, words.join(" "), maxWidth);
-      if (lines.length > 2) continue;
-      const widest = Math.max(0, ...lines.map((l) => ctx.measureText(l).width));
-      const blockHeight = lines.length * fontSize * 1.07;
-      if (widest <= maxWidth && blockHeight <= maxBlockHeight) {
-        return { fontSize, lines };
-      }
-    }
-    ctx.font = `900 ${minSize}px ${FONTS.condensed}`;
-    const lines =
-      words.length <= 2 && words.length > 0
-        ? words
-        : wrapTextMaxLines(ctx, words.join(" "), maxWidth, 2);
-    return { fontSize: minSize, lines };
-  }
-
-  function drawHeadline(ctx, text, L) {
-    ctx.save();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.textAlign = "center";
-
-    // "Zweizeilig": Wettbewerbsnamen wie "Landesliga-Quali" werden am
-    // Bindestrich/Leerzeichen in zwei große Zeilen aufgeteilt (Bindestrich
-    // fällt dabei weg), statt als ein kleinerer Einzeiler zu laufen.
-    const maxWidth = W * 0.9;
-    // Verfügbare Höhe bis zur Ort-Zeile darf nicht überschritten werden,
-    // sonst überlappt eine zweizeilige Überschrift mit dem Text darunter.
-    const maxBlockHeight = (L.venueCenterY - L.headlineStartY) * 0.82;
-    const words = text.toUpperCase().replace(/-/g, " ").split(" ").filter(Boolean);
-    const { fontSize, lines } = fitHeadline(
-      ctx,
-      words,
-      maxWidth,
-      L.headlineMinFontSize,
-      L.headlineMaxFontSize,
-      maxBlockHeight
-    );
-
-    const lineHeight = fontSize * 1.07;
-    let y = L.headlineStartY + fontSize * 0.8;
-    lines.slice(0, 2).forEach((line) => {
-      ctx.fillText(line, W / 2, y);
-      y += lineHeight;
-    });
     ctx.restore();
   }
 
   async function renderAnkuendigung(ctx, data) {
     const c = COLORS();
-    const L = LAYOUT.ankuendigung;
     const photoImg = data.teamPhoto ? await loadImage(data.teamPhoto) : null;
     drawAnnounceBackground(ctx, photoImg);
 
-    drawTeamTag(ctx, data.teamName);
+    drawFlagCorner(ctx);
+    drawPresenter(ctx, "Der Spieltag wird präsentiert von", window.APP_CONFIG.club.presenter);
+    // Bei der Spieltags-Ankündigung ist das Mannschafts-Feld größer als beim
+    // Ergebnis (eigenes Layout LAYOUT.chipAnnounce), Rahmen bleibt sichtbar.
+    drawChip(ctx, data.teamName, LAYOUT.chipAnnounce);
 
-    const smallLine = formatSmallLine(data.matchday, data.date, data.kickoff, data.type);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = `700 ${L.smallLineFontSize}px ${FONTS.condensed}`;
-    ctx.textAlign = "center";
-    drawLetterSpaced(ctx, smallLine, W / 2, L.smallLineCenterY, 1.5, "center");
-    ctx.textAlign = "left";
+    drawHeadline(ctx, data.competition || "Spieltag");
 
-    drawHeadline(ctx, data.competition || typeLabel(data.type) || "Spieltag", L);
-
-    ctx.fillStyle = c.cream;
-    ctx.font = `600 ${L.venueFontSize}px ${FONTS.condensed}`;
-    ctx.textAlign = "center";
-    drawLetterSpaced(ctx, (data.venueLine || "").toUpperCase(), W / 2, L.venueCenterY, 1.5, "center");
-    ctx.textAlign = "left";
-
+    // Logo-Box unten links
+    const box = LAYOUT.logoBoxAnnounce;
     const mtsvImg = await loadImage(window.APP_CONFIG.club.logo);
     const opponentImg = data.opponentLogo ? await loadImage(data.opponentLogo) : null;
-    drawDuelBlock(ctx, L.duelCenterY, mtsvImg, opponentImg, data.opponentName, data.isHome);
+    drawLogoBox(ctx, box, mtsvImg, opponentImg);
 
-    const presenterLogo = window.APP_CONFIG.club.presenterLogo
-      ? await loadImage(window.APP_CONFIG.club.presenterLogo)
-      : null;
-    drawSponsorBar(ctx, presenterLogo);
+    // Textblock rechts neben der Box
+    const textX = box.x + box.w + 32;
+    const rowH = box.h / 3;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "left";
+
+    ctx.font = `900 40px ${FONTS.condensed}`;
+    ctx.fillText((data.opponentName || "").toUpperCase(), textX, box.y + rowH * 1 - 6);
+
+    // Datum/Uhrzeit jetzt etwas größer (LAYOUT.matchMeta) als vorher.
+    ctx.font = `600 ${LAYOUT.matchMeta.fontSize}px ${FONTS.condensed}`;
+    drawLetterSpaced(
+      ctx,
+      `${data.dateLine || ""} · ${data.timeLine || ""}`.toUpperCase(),
+      textX,
+      box.y + rowH * 2 - 2,
+      1
+    );
+
+    ctx.font = `600 ${LAYOUT.matchMeta.fontSize}px ${FONTS.condensed}`;
+    drawLetterSpaced(ctx, (data.venueLine || "").toUpperCase(), textX, box.y + rowH * 3 - 2, 1);
+
+    // Spieltag-Nr unten
+    ctx.fillStyle = c.cream;
+    ctx.font = `600 ${LAYOUT.matchday.fontSize}px ${FONTS.condensed}`;
+    ctx.textAlign = "center";
+    drawLetterSpaced(
+      ctx,
+      `SPIELTAG ${data.matchday || ""}`,
+      LAYOUT.matchday.centerX,
+      LAYOUT.matchday.y,
+      3,
+      "center"
+    );
+    ctx.textAlign = "left";
   }
 
   // -------------------------------------------------------------------------
