@@ -16,14 +16,14 @@ window.Renderer = (function () {
   const LAYOUT = {
     teamTag: {
       x: 64,
-      y: 84,
-      barW: 11,
-      fontSize: 56,
+      y: 100,
+      barW: 12,
+      fontSize: 60,
       gapAfterBar: 28,
     },
-    metaLine: { centerX: 540, y: 560, fontSize: 42 },
+    metaLine: { centerX: 540, y: 520, fontSize: 42 },
     headline: { centerX: 540, y: 748, maxFontSize: 132, minFontSize: 56, maxWidthRatio: 0.9 },
-    venueLine: { centerX: 540, y: 925, fontSize: 34 },
+    venueLine: { centerX: 540, y: 875, fontSize: 34 },
     score: { centerX: 540, centerY: 420, fontSize: 280 },
     outcome: { centerX: 540, y: 641, fontSize: 56 },
     scorers: {
@@ -369,7 +369,16 @@ window.Renderer = (function () {
       ctx.textAlign = "left";
     }
 
-    drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
+    // Duell-Block: beim Ergebnis steht das eigene Team links, der Gegner
+    // rechts (wie im Referenzbild "4:4" – MTSV links, Gegner rechts).
+    // Duell-Block: Reihenfolge wie tatsächlich gespielt – Heimmannschaft
+    // links, Auswärtsmannschaft rechts (unabhängig davon, ob das eigene
+    // Team oder der Gegner Heimrecht hatte).
+    if (data.isHome) {
+      drawMatchup(ctx, mtsvImg, "MTSV", opponentImg, data.opponentName);
+    } else {
+      drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
+    }
     await drawSponsorBar(ctx);
   }
 
@@ -437,7 +446,12 @@ window.Renderer = (function () {
 
     const mtsvImg = await safeLoadImage(window.APP_CONFIG.club.logo);
     const opponentImg = await safeLoadImage(data.opponentLogo);
-    drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
+    // Duell-Block: gleiche Heim/Auswärts-Logik wie beim Ergebnis.
+    if (data.isHome) {
+      drawMatchup(ctx, mtsvImg, "MTSV", opponentImg, data.opponentName);
+    } else {
+      drawMatchup(ctx, opponentImg, data.opponentName, mtsvImg, "MTSV");
+    }
 
     await drawSponsorBar(ctx);
   }
