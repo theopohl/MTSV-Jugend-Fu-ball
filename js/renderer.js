@@ -21,8 +21,8 @@ window.Renderer = (function () {
       fontSize: 60,
       gapAfterBar: 28,
     },
-    metaLine: { centerX: 540, y: 520, fontSize: 42 },
-    headline: { centerX: 540, y: 748, maxFontSize: 132, minFontSize: 56, maxWidthRatio: 0.9 },
+    metaLine: { centerX: 540, y: 512, fontSize: 30 },
+    headline: { centerX: 540, y: 720, maxFontSize: 92, minFontSize: 46, maxWidthRatio: 0.86 },
     venueLine: { centerX: 540, y: 875, fontSize: 34 },
     score: { centerX: 540, centerY: 420, fontSize: 280 },
     outcome: { centerX: 540, y: 641, fontSize: 56 },
@@ -212,6 +212,15 @@ window.Renderer = (function () {
         const pad = s * 0.14;
         const fit = fitContain(img, s - pad * 2, s - pad * 2);
         ctx.drawImage(img, bx + (s - fit.w) / 2, boxY + (s - fit.h) / 2, fit.w, fit.h);
+      } else {
+        // Sichtbarer Platzhalter statt einer stillen, leeren Box – so ist
+        // im Bild sofort erkennbar, dass für dieses Team (noch) kein Logo
+        // hinterlegt ist, statt dass die Fläche unauffällig leer bleibt.
+        ctx.fillStyle = "#C9D2CC";
+        ctx.font = `700 18px ${FONTS.condensed}`;
+        ctx.textAlign = "center";
+        ctx.fillText("KEIN LOGO", bx + s / 2, boxY + s / 2 + 6);
+        ctx.fillStyle = "#FFFFFF";
       }
       ctx.restore();
     });
@@ -355,16 +364,14 @@ window.Renderer = (function () {
         const y = startY + i * sc.rowGap;
         const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
         ctx.textAlign = "right";
-        ctx.fillText(label, leftColX - sc.crestSize * 0.9, y + sc.fontSize * 0.35);
-        drawSmallCrest(ctx, mtsvImg, leftColX - sc.crestSize / 2, y + sc.fontSize * 0.1, sc.crestSize);
+        ctx.fillText(label, W / 2 - 20, y + sc.fontSize * 0.35);
       });
 
       oppScorers.forEach((entry, i) => {
         const y = startY + i * sc.rowGap;
         const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
-        drawSmallCrest(ctx, opponentImg, rightColX + sc.crestSize / 2, y + sc.fontSize * 0.1, sc.crestSize);
         ctx.textAlign = "left";
-        ctx.fillText(label, rightColX + sc.crestSize * 0.9, y + sc.fontSize * 0.35);
+        ctx.fillText(label, W / 2 + 20, y + sc.fontSize * 0.35);
       });
       ctx.textAlign = "left";
     }
