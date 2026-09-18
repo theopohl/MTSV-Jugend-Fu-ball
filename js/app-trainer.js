@@ -26,8 +26,18 @@
     newOpponentLogo: document.getElementById("newOpponentLogo"),
     createOpponentBtn: document.getElementById("createOpponentBtn"),
     createOpponentMsg: document.getElementById("createOpponentMsg"),
+    opponentChipList: document.getElementById("opponentChipList"),
+    refreshOpponentsBtn: document.getElementById("refreshOpponentsBtn"),
+    opponentLogoPreviewField: document.getElementById("opponentLogoPreviewField"),
+    opponentLogoPreview: document.getElementById("opponentLogoPreview"),
+    opponentLogoPreviewEmpty: document.getElementById("opponentLogoPreviewEmpty"),
+    opponentNamesList: document.getElementById("opponentNamesList"),
+    opponentLogoLabel: document.getElementById("opponentLogoLabel"),
     newFixtureForm: document.getElementById("newFixtureForm"),
   };
+
+  // selectedOpponentId === null bedeutet "+ neuer Gegner" ist aktiv.
+  state.selectedOpponentId = null;
 
   let opponentsCache = null;
 
@@ -42,6 +52,121 @@
     opponentsCache.push(created);
     return created;
   }
+
+  // ---- Gegner-Verwaltung: Liste, Auswahl per Klick, Logo ersetzen --------
+  //
+  // Vorher fehlte diese komplette Verdrahtung: die Gegner-Kästchen in der
+  // Seite reagierten auf keinen Klick, und "Gegner speichern" hat IMMER
+  // einen neuen Gegner-Datensatz angelegt statt einen bestehenden zu
+  // aktualisieren. Dadurch landete ein neu hochgeladenes Logo an einem
+  // zweiten, ungenutzten Gegner-Eintrag, während die Spiele im Spielplan
+  // weiterhin auf den alten (logo-losen) Eintrag zeigten – deshalb tauchte
+  // das Logo nie auf dem fertigen Post auf.
+
+  async function refreshOpponentsCache() {
+    opponentsCache = await window.Db.getOpponents();
+    return opponentsCache;
+  }
+
+  function renderOpponentDatalist() {
+    if (!el.opponentNamesList) return;
+    el.opponentNamesList.innerHTML = "";
+    (opponentsCache || []).forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.name;
+      el.opponentNamesList.appendChild(opt);
+    });
+  }
+
+  function renderOpponentChips() {
+    if (!el.opponentChipList) return;
+    el.opponentChipList.innerHTML = "";
+
+    const newChip = document.createElement("div");
+    newChip.className = "chip" + (state.selectedOpponentId === null ? " active" : "");
+    newChip.textContent = "+ neuer Gegner";
+    newChip.addEventListener("click", () => selectOpponent(null));
+    el.opponentChipList.appendChild(newChip);
+
+    (opponentsCache || []).forEach((o) => {
+      const chip = document.createElement("div");
+      chip.className = "chip" + (state.selectedOpponentId === o.id ? " active" : "");
+      chip.textContent = o.name;
+      chip.addEventListener("click", () => selectOpponent(o.id));
+      el.opponentChipList.appendChild(chip);
+    });
+  }
+
+  function selectOpponent(opponentId) {
+    state.selectedOpponentId = opponentId;
+    const opponent = (opponentsCache || []).find((o) => o.id === opponentId) || null;
+
+    if (opponent) {
+      // Vorhandenen Gegner ausgewählt: Name-Feld zeigt ihn an und ist
+      // gesperrt (damit man aus Versehen keinen neuen, ähnlich benannten
+      // Gegner erzeugt), Logo-Upload ersetzt sein Logo.
+      el.newOpponentName.value = opponent.name;
+      el.newOpponentName.disabled = true;
+      if (el.opponentLogoLabel) el.opponentLogoLabel.textContent = "Logo ersetzen (optional)";
+      if (el.opponentLogoPreviewField) el.opponentLogoPreviewField.style.display = "";
+      if (opponent.logo_url) {
+        el.opponentLogoPreview.src = opponent.logo_url;
+        el.opponentLogoPreview.style.display = "";
+        if (el.opponentLogoPreviewEmpty) el.opponentLogoPreviewEmpty.style.display = "none";
+      } else {
+        el.opponentLogoPreview.style.display = "none";
+        if (el.opponentLogoPreviewEmpty) el.opponentLogoPreviewEmpty.style.display = "";
+      }
+    } else {
+      // "+ neuer Gegner": Felder leeren und freigeben.
+      el.newOpponentName.value = "";
+      el.newOpponentName.disabled = false;
+      if (el.opponentLogoLabel) el.opponentLogoLabel.textContent = "Logo (optional)";
+      if (el.opponentLogoPreviewField) el.opponentLogoPreviewField.style.display = "none";
+    }
+    el.newOpponentLogo.value = "";
+    el.createOpponentMsg.textContent = "";
+    renderOpponentChips();
+  }
+
+  async function initOpponentSection() {
+    await refreshOpponentsCache();
+    renderOpponentDatalist();
+    renderOpponentChips();
+    selectOpponent(null);
+  }
+
+  if (el.refreshOpponentsBtn) {
+    el.refreshOpponentsBtn.addEventListener("click", async () => {
+      await refreshOpponentsCache();
+      renderOpponentDatalist();
+      renderOpponentChips();
+    });
+  }
+
+  // Tippt man einen Namen, der zu einem vorhandenen Gegner passt, wird der
+  // automatisch als "ausgewählt" erkannt (wie im Hinweistext beschrieben).
+  el.newOpponentName.addEventListener("input", () => {
+    if (el.newOpponentName.disabled) return;
+    const typed = el.newOpponentName.value.trim().toLowerCase();
+    const match = (opponentsCache || []).find((o) => o.name.toLowerCase() === typed);
+    state.selectedOpponentId = match ? match.id : null;
+    renderOpponentChips();
+    if (match) {
+      if (el.opponentLogoLabel) el.opponentLogoLabel.textContent = "Logo ersetzen (optional)";
+      if (el.opponentLogoPreviewField) el.opponentLogoPreviewField.style.display = "";
+      if (match.logo_url) {
+        el.opponentLogoPreview.src = match.logo_url;
+        el.opponentLogoPreview.style.display = "";
+        if (el.opponentLogoPreviewEmpty) el.opponentLogoPreviewEmpty.style.display = "none";
+      } else {
+        el.opponentLogoPreview.style.display = "none";
+        if (el.opponentLogoPreviewEmpty) el.opponentLogoPreviewEmpty.style.display = "";
+      }
+    } else if (el.opponentLogoPreviewField) {
+      el.opponentLogoPreviewField.style.display = "none";
+    }
+  });
 
   function paramTeamSlug() {
     return new URLSearchParams(location.search).get("team");
@@ -240,10 +365,43 @@
     const name = el.newOpponentName.value.trim();
     if (!name) return;
     const logoFile = el.newOpponentLogo.files[0] || null;
-    await window.Db.createOpponent({ name, logoFile });
-    el.createOpponentMsg.textContent = `Gegner "${name}" gespeichert.`;
-    el.newOpponentName.value = "";
-    el.newOpponentLogo.value = "";
+
+    el.createOpponentBtn.disabled = true;
+    try {
+      if (state.selectedOpponentId) {
+        // Vorhandenen Gegner aktualisieren statt einen zweiten anzulegen.
+        if (logoFile) {
+          await window.Db.updateOpponentLogo(state.selectedOpponentId, name, logoFile);
+          el.createOpponentMsg.textContent = `Logo für "${name}" aktualisiert.`;
+        } else {
+          el.createOpponentMsg.textContent = `"${name}" ist bereits vorhanden – kein neues Logo ausgewählt.`;
+        }
+      } else {
+        const existing = (opponentsCache || []).find(
+          (o) => o.name.toLowerCase() === name.toLowerCase()
+        );
+        if (existing) {
+          // Sicherheitsnetz: Name entspricht doch einem vorhandenen Gegner.
+          if (logoFile) {
+            await window.Db.updateOpponentLogo(existing.id, name, logoFile);
+            el.createOpponentMsg.textContent = `Logo für "${name}" aktualisiert.`;
+          } else {
+            el.createOpponentMsg.textContent = `"${name}" ist bereits vorhanden.`;
+          }
+        } else {
+          await window.Db.createOpponent({ name, logoFile });
+          el.createOpponentMsg.textContent = `Gegner "${name}" angelegt.`;
+        }
+      }
+      await refreshOpponentsCache();
+      renderOpponentDatalist();
+      selectOpponent(null);
+    } catch (err) {
+      console.error(err);
+      el.createOpponentMsg.textContent = "Fehler beim Speichern: " + err.message;
+    } finally {
+      el.createOpponentBtn.disabled = false;
+    }
   });
 
   el.newFixtureForm.addEventListener("submit", async (e) => {
@@ -268,5 +426,6 @@
     await refreshNextMatch();
   });
 
+  await initOpponentSection();
   await loadTeams();
 })();
