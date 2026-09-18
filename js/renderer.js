@@ -35,6 +35,7 @@ window.Renderer = (function () {
       dividerHalfHeight: 29,
     },
     matchup: {
+      centerX: 540,
       centerY: 1080,
       boxSize: 168,
       gapFromCenter: 240,
