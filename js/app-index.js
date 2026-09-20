@@ -205,7 +205,7 @@
   }
 
   el.downloadBtn.addEventListener("click", () => {
-    el.canvas.toBlob((blob) => {
+    el.canvas.toBlob(async (blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const teamSlug = state.team ? state.team.slug : "team";
@@ -214,6 +214,27 @@
       a.download = `mtsv-${teamSlug}-${state.postType}-spieltag${md}.png`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+      // Nach dem Download: Nur Ankündigungen werden aus dem Spielplan
+      // entfernt (das geplante Spiel wird ja nicht mehr gebraucht, sobald
+      // die Ankündigung raus ist). Ergebnis-Spiele bleiben bewusst
+      // gespeichert – die App braucht das zuletzt gespielte Ergebnis, um in
+      // der NÄCHSTEN Ankündigung automatisch darauf zurückzugreifen
+      // ("Nach dem 3:1-Sieg gegen X…").
+      if (state.fixture && state.postType === "ankuendigung") {
+        const opponentName = state.fixture.opponent ? state.fixture.opponent.name : "";
+        const confirmed = confirm(
+          `Ankündigung gegen ${opponentName} jetzt aus dem Spielplan entfernen?`
+        );
+        if (confirmed) {
+          try {
+            await window.sb.from("fixtures").delete().eq("id", state.fixture.id);
+            await loadFixtures();
+          } catch (err) {
+            console.error("Fehler beim Entfernen des Spiels:", err);
+          }
+        }
+      }
     }, "image/png");
   });
 

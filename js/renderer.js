@@ -323,7 +323,11 @@ window.Renderer = (function () {
     ctx.font = `900 ${s.fontSize}px ${FONTS.black}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${data.ownGoals}:${data.oppGoals}`, s.centerX, s.centerY);
+    // Reihenfolge wie beim Duell-Block: Heim-Tore links, Auswärts-Tore
+    // rechts – unabhängig davon, ob "eigenes Team" Heim oder Auswärts war.
+    const leftGoals = data.isHome ? data.ownGoals : data.oppGoals;
+    const rightGoals = data.isHome ? data.oppGoals : data.ownGoals;
+    ctx.fillText(`${leftGoals}:${rightGoals}`, s.centerX, s.centerY);
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
 
@@ -343,6 +347,10 @@ window.Renderer = (function () {
       const sc = LAYOUT.scorers;
       const ownScorers = data.scorers.filter(scorerIsOwnTeam);
       const oppScorers = data.scorers.filter((s2) => !scorerIsOwnTeam(s2));
+      // Gleiche Heim/Auswärts-Logik wie beim Spielstand: links = Heim,
+      // rechts = Auswärts.
+      const leftScorers = data.isHome ? ownScorers : oppScorers;
+      const rightScorers = data.isHome ? oppScorers : ownScorers;
 
       // Dünner Trennstrich zwischen den beiden Team-Spalten, wie im
       // Original-Design von vor einigen Wochen.
@@ -356,19 +364,17 @@ window.Renderer = (function () {
       ctx.font = `900 ${sc.fontSize}px ${FONTS.condensed}`;
       ctx.fillStyle = c.cream || "#E9EFE9";
 
-      const rowCount = Math.max(ownScorers.length, oppScorers.length, 1);
+      const rowCount = Math.max(leftScorers.length, rightScorers.length, 1);
       const startY = sc.centerY - ((rowCount - 1) * sc.rowGap) / 2;
-      const leftColX = W / 2 - sc.colGapFromCenter;
-      const rightColX = W / 2 + sc.colGapFromCenter;
 
-      ownScorers.forEach((entry, i) => {
+      leftScorers.forEach((entry, i) => {
         const y = startY + i * sc.rowGap;
         const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
         ctx.textAlign = "right";
         ctx.fillText(label, W / 2 - 20, y + sc.fontSize * 0.35);
       });
 
-      oppScorers.forEach((entry, i) => {
+      rightScorers.forEach((entry, i) => {
         const y = startY + i * sc.rowGap;
         const label = `${entry.minute}' ${entry.name.toUpperCase()}`;
         ctx.textAlign = "left";
