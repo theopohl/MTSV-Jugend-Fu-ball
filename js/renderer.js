@@ -533,23 +533,37 @@ window.Renderer = (function () {
 
     games.forEach((g, i) => {
       const y = listTop + rowHeight * (i + 0.5);
-      const crestSize = clamp(rowHeight * 0.62, 50, 130);
+      const crestSize = clamp(rowHeight * 0.56, 44, 118);
       const crest1X = listLeft + crestSize / 2;
       const crest2X = crest1X + crestSize + 16;
 
-      drawSmallCrest(ctx, ownLogo, crest1X, y, crestSize);
-      drawSmallCrest(ctx, opponentLogos[i], crest2X, y, crestSize);
+      // Bei Auswärtsspielen steht das eigene Logo rechts, der Gegner links –
+      // gleiche Konvention wie im Duell-Block von Ankündigung/Ergebnis.
+      const awayGame = g.isHome === false;
+      const leftLogo = awayGame ? opponentLogos[i] : ownLogo;
+      const rightLogo = awayGame ? ownLogo : opponentLogos[i];
+      drawSmallCrest(ctx, leftLogo, crest1X, y, crestSize);
+      drawSmallCrest(ctx, rightLogo, crest2X, y, crestSize);
 
-      // Team-Name unter den Wappen – ohne den sähen alle Zeilen wegen des
-      // gemeinsamen MTSV-Logos identisch aus.
-      const teamFontSize = clamp(rowHeight * 0.22, 20, 34);
+      // Team-Name + Gegner unter den Wappen – ohne den Team-Namen sähen alle
+      // Zeilen wegen des gemeinsamen MTSV-Logos identisch aus, und der
+      // Gegner war bisher gar nicht benannt.
+      const teamFontSize = clamp(rowHeight * 0.19, 16, 30);
+      const opponentFontSize = clamp(teamFontSize * 0.6, 12, 18);
       ctx.textAlign = "center";
       ctx.fillStyle = c.cream || "#E9EFE9";
       ctx.font = `700 ${teamFontSize}px ${FONTS.condensed}`;
       ctx.fillText(
         (g.teamName || "").toUpperCase(),
         (crest1X + crest2X) / 2,
-        y + crestSize / 2 + teamFontSize + 8
+        y + crestSize / 2 + teamFontSize + 6
+      );
+      ctx.font = `600 ${opponentFontSize}px ${FONTS.condensed}`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(
+        `vs. ${(g.opponentName || "").toUpperCase()}`,
+        (crest1X + crest2X) / 2,
+        y + crestSize / 2 + teamFontSize + opponentFontSize + 12
       );
 
       const textX = crest2X + crestSize / 2 + 40;
