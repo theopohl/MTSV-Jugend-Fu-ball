@@ -55,11 +55,21 @@
     <div class="chip-list" id="typeChips">
       <div class="chip active" data-type="ankuendigung">Ankündigung</div>
       <div class="chip" data-type="ergebnis">Ergebnis</div>
+      <div class="chip" data-type="wochenuebersicht">Wochenübersicht</div>
     </div>
 
-    <div class="field">
+    <div class="field" id="fixtureSelectField">
       <label for="fixtureSelect">Spiel</label>
       <select id="fixtureSelect"></select>
+    </div>
+
+    <div class="field" id="weekendField" style="display:none;">
+      <label for="weekendDate">Wochenende</label>
+      <input type="date" id="weekendDate" />
+      <p class="hint" style="margin-bottom:0;">
+        Beliebigen Tag aus dem gewünschten Wochenende wählen (z. B. den Samstag) –
+        alle geplanten Spiele aller Teams von Freitag bis Sonntag dieser Woche werden gesammelt.
+      </p>
     </div>
   </section>
 

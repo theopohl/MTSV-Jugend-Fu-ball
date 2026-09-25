@@ -122,6 +122,10 @@ window.Renderer = (function () {
     return { w: img.width * scale, h: img.height * scale };
   }
 
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
   // ---- Mannschafts-Tag oben links: dünner weißer Balken + fetter Text ----
   function drawTeamTag(ctx, text) {
     const t = LAYOUT.teamTag;
@@ -471,6 +475,102 @@ window.Renderer = (function () {
   }
 
   // -------------------------------------------------------------------------
+  // Wochenübersicht-Post: ein Sammel-Bild mit den Ansetzungen aller Teams.
+  // -------------------------------------------------------------------------
+
+  async function renderWochenuebersicht(ctx, data) {
+    const c = COLORS();
+    const jersey = await safeLoadImage(window.APP_CONFIG.jerseyBg);
+    if (jersey) {
+      ctx.drawImage(jersey, 0, 0, W, H);
+      ctx.fillStyle = "rgba(6,26,17,0.35)";
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.fillStyle = c.jerseyGreen || "#0F3B26";
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Großer, vertikaler Schriftzug am linken Rand.
+    const accent = c.accentRed || "#C0392B";
+    ctx.save();
+    ctx.translate(108, H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = accent;
+    ctx.font = `900 96px ${FONTS.black}`;
+    drawLetterSpaced(ctx, "ANSETZUNGEN", 0, 0, 12, "center");
+    ctx.restore();
+    ctx.textAlign = "left";
+
+    const games = data.games || [];
+    const listTop = 90;
+    const listBottom = H - LAYOUT.sponsorBar.height - 40;
+    const availableHeight = listBottom - listTop;
+    const listLeft = 230;
+
+    if (!games.length) {
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.font = `700 40px ${FONTS.condensed}`;
+      ctx.textAlign = "center";
+      ctx.fillText("KEINE SPIELE IN DIESEM ZEITRAUM", (listLeft + W) / 2, H / 2);
+      ctx.textAlign = "left";
+      await drawSponsorBar(ctx);
+      return;
+    }
+
+    const ownLogo = await safeLoadImage(window.APP_CONFIG.club.logo);
+    const opponentLogos = await Promise.all(games.map((g) => safeLoadImage(g.opponentLogo)));
+
+    // Zeilenhöhe/Schriftgrößen passen sich der Anzahl der Spiele an, damit
+    // 3 Zeilen genauso gut aussehen wie 8 (wie bei drawBigHeadline).
+    const rowHeight = availableHeight / games.length;
+
+    games.forEach((g, i) => {
+      const y = listTop + rowHeight * (i + 0.5);
+      const crestSize = clamp(rowHeight * 0.6, 46, 118);
+      const crest1X = listLeft + crestSize / 2;
+      const crest2X = crest1X + crestSize + 14;
+
+      drawSmallCrest(ctx, ownLogo, crest1X, y, crestSize);
+      drawSmallCrest(ctx, opponentLogos[i], crest2X, y, crestSize);
+
+      // Team-Name unter den Wappen – ohne den sähen alle Zeilen wegen des
+      // gemeinsamen MTSV-Logos identisch aus.
+      const teamFontSize = clamp(rowHeight * 0.15, 13, 20);
+      ctx.textAlign = "center";
+      ctx.fillStyle = c.cream || "#E9EFE9";
+      ctx.font = `700 ${teamFontSize}px ${FONTS.condensed}`;
+      ctx.fillText(
+        (g.teamName || "").toUpperCase(),
+        (crest1X + crest2X) / 2,
+        y + crestSize / 2 + teamFontSize + 6
+      );
+
+      const textX = crest2X + crestSize / 2 + 36;
+      const dayFontSize = clamp(rowHeight * 0.3, 26, 50);
+      const timeFontSize = dayFontSize * 0.6;
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = `900 ${dayFontSize}px ${FONTS.condensed}`;
+      ctx.fillText(g.dayLabel || "", textX, y - timeFontSize * 0.3);
+      ctx.font = `600 ${timeFontSize}px ${FONTS.condensed}`;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillText(`${g.kickoff || ""} Uhr`, textX, y + dayFontSize * 0.55);
+
+      if (i < games.length - 1) {
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(listLeft, listTop + rowHeight * (i + 1));
+        ctx.lineTo(W - 64, listTop + rowHeight * (i + 1));
+        ctx.stroke();
+      }
+    });
+
+    ctx.textAlign = "left";
+    await drawSponsorBar(ctx);
+  }
+
+  // -------------------------------------------------------------------------
 
   async function render(canvas, type, data) {
     await fontsReady();
@@ -478,6 +578,8 @@ window.Renderer = (function () {
     ctx.clearRect(0, 0, W, H);
     if (type === "ergebnis") {
       await renderErgebnis(ctx, data);
+    } else if (type === "wochenuebersicht") {
+      await renderWochenuebersicht(ctx, data);
     } else {
       await renderAnkuendigung(ctx, data);
     }

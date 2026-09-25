@@ -156,13 +156,55 @@ window.Db = (function () {
   }
 
   async function saveResult(fixtureId, { own_goals, opp_goals, scorers, note }) {
-    return updateFixture(fixtureId, {
+    // Fixture vorher laden: wir brauchen team_id + Gegner/Datum/Spieltag, um
+    // parallel teams.last_result zu aktualisieren (siehe unten).
+    const fixture = await getFixtureById(fixtureId);
+    const updated = await updateFixture(fixtureId, {
       own_goals,
       opp_goals,
       scorers: scorers || [],
       note: note || null,
       status: "gespielt",
     });
+    if (fixture) {
+      await updateTeam(fixture.team_id, {
+        last_result: {
+          own_goals,
+          opp_goals,
+          opponent_name: fixture.opponent ? fixture.opponent.name : "",
+          date: fixture.date,
+          matchday: fixture.matchday,
+          is_home: fixture.is_home,
+        },
+      });
+    }
+    return updated;
+  }
+
+  // Automatisches Aufräumen alter Spiele (Sicherheitsnetz zum serverseitigen
+  // pg_cron-Job aus supabase/migration_cleanup.sql – falls der Cron-Job aus
+  // irgendeinem Grund nicht läuft, holt jeder App-Start das nach).
+  // "geplant" ohne je eingetragenes Ergebnis: weg nach 1 Tag.
+  // "gespielt": weg nach 3 Tagen (der Rückblick-Text lebt über
+  // teams.last_result weiter, siehe saveResult oben).
+  async function cleanupOldFixtures() {
+    const toISODate = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+    const plannedCutoff = new Date();
+    plannedCutoff.setDate(plannedCutoff.getDate() - 1);
+    const playedCutoff = new Date();
+    playedCutoff.setDate(playedCutoff.getDate() - 3);
+
+    await unwrap(
+      sb().from("fixtures").delete().eq("status", "geplant").lte("date", toISODate(plannedCutoff))
+    );
+    await unwrap(
+      sb().from("fixtures").delete().eq("status", "gespielt").lte("date", toISODate(playedCutoff))
+    );
   }
 
   function slugify(s) {
@@ -195,6 +237,7 @@ window.Db = (function () {
     updateFixture,
     bulkCreateFixtures,
     saveResult,
+    cleanupOldFixtures,
     slugify,
   };
 })();

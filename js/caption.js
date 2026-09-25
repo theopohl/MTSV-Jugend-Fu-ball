@@ -82,6 +82,24 @@ window.Caption = (function () {
     return label ? `${label} · ${spieltag}` : spieltag;
   }
 
+  // Der Rückblick-Satz bekommt entweder eine live geladene "gespielt"-Fixture
+  // (mit fixture.opponent.name) oder teams.last_result (JSON mit
+  // opponent_name direkt drin, überlebt das automatische Löschen der
+  // Fixture nach 3 Tagen) – hier auf eine gemeinsame Form bringen.
+  function normalizeLastResult(input) {
+    if (!input) return null;
+    const opponentName = input.opponent ? input.opponent.name : input.opponent_name || "";
+    if (!opponentName) return null;
+    return {
+      own_goals: input.own_goals,
+      opp_goals: input.opp_goals,
+      opponentName,
+      date: input.date,
+      matchday: input.matchday,
+      is_home: input.is_home,
+    };
+  }
+
   function teamHashtag(teamName) {
     return teamName.replace(/-/g, "").replace(/\s+/g, "");
   }
@@ -132,11 +150,11 @@ window.Caption = (function () {
   };
 
   function announceIntro(lastFixture) {
-    if (!lastFixture || !lastFixture.opponent) {
+    const norm = normalizeLastResult(lastFixture);
+    if (!norm) {
       return pickVariant(ANNOUNCE_INTRO_VARIANTS.keinSpiel);
     }
-    const { own_goals: og, opp_goals: pg } = lastFixture;
-    const opponentName = lastFixture.opponent.name;
+    const { own_goals: og, opp_goals: pg, opponentName } = norm;
     const kind = resultKind(og, pg);
     return pickVariant(ANNOUNCE_INTRO_VARIANTS[kind](og, pg, opponentName));
   }
@@ -229,6 +247,26 @@ window.Caption = (function () {
     return lines.join("\n");
   }
 
+  // Sammel-Post für ein Wochenende: alle Teams/Spiele in einer Aufzählung.
+  // Rein additiv – Ankündigung/Ergebnis bleiben unverändert.
+  function buildWochenuebersicht({ weekendLabel, games }) {
+    const lines = [
+      `📋 Unsere Ansetzungen${weekendLabel ? ` – ${weekendLabel}` : " fürs Wochenende"}`,
+      "",
+    ];
+    (games || []).forEach((g) => {
+      const ort = g.isHome ? "Heimspiel" : "Auswärts";
+      lines.push(`⚽ ${g.teamName} vs. ${g.opponentName} – ${g.dayLabel}, ${g.kickoff} Uhr (${ort})`);
+    });
+    lines.push(
+      "",
+      "Kommt vorbei und feuert unsere Teams an! 💚",
+      "",
+      "#MTSVHohenwestedt #Jugendfussball #Amateurfussball #Hohenwestedt"
+    );
+    return lines.join("\n");
+  }
+
   return {
     formatDateShort,
     formatDateLong,
@@ -239,5 +277,6 @@ window.Caption = (function () {
     matchLine,
     buildAnkuendigung,
     buildErgebnis,
+    buildWochenuebersicht,
   };
 })();

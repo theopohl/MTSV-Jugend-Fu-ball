@@ -16,8 +16,12 @@ create table if not exists teams (
   competition   text not null default '',       -- z.B. "Landesliga-Quali"
   hashtag       text not null default '',       -- z.B. "#BJugend"
   default_venue text not null default 'Sportpark Wilhelmshöhe',
+  last_result   jsonb,                          -- letztes Ergebnis, überlebt das Löschen der Fixture (siehe migration_cleanup.sql)
   created_at    timestamptz not null default now()
 );
+
+-- Migration für bereits bestehende Installationen.
+alter table teams add column if not exists last_result jsonb;
 
 create table if not exists opponents (
   id         uuid primary key default gen_random_uuid(),
@@ -79,6 +83,34 @@ drop trigger if exists fixtures_set_updated_at on fixtures;
 create trigger fixtures_set_updated_at
   before update on fixtures
   for each row execute function set_updated_at();
+
+-- ----------------------------------------------------------------------------
+-- Automatisches Aufräumen alter Spiele (Details siehe migration_cleanup.sql)
+-- ----------------------------------------------------------------------------
+
+create or replace function cleanup_old_fixtures()
+returns void as $$
+begin
+  delete from fixtures
+    where status = 'geplant' and date <= (current_date - interval '1 day');
+  delete from fixtures
+    where status = 'gespielt' and date <= (current_date - interval '3 days');
+end;
+$$ language plpgsql;
+
+-- pg_cron muss im Supabase-Dashboard aktiviert sein (Database > Extensions),
+-- sonst wird der tägliche Job hier übersprungen (nur ein "notice", kein Fehler).
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    if exists (select 1 from cron.job where jobname = 'cleanup-old-fixtures') then
+      perform cron.unschedule('cleanup-old-fixtures');
+    end if;
+    perform cron.schedule('cleanup-old-fixtures', '0 3 * * *', 'select cleanup_old_fixtures();');
+  else
+    raise notice 'pg_cron ist nicht aktiviert – Cron-Job übersprungen. Aktivieren unter Database > Extensions im Supabase-Dashboard.';
+  end if;
+end $$;
 
 -- ----------------------------------------------------------------------------
 -- Storage-Buckets (öffentlich lesbar, damit Bilder im Canvas geladen werden können)

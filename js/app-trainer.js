@@ -1,4 +1,11 @@
 (async function () {
+  // Sicherheitsnetz fürs automatische Aufräumen (Haupt-Job läuft serverseitig
+  // per pg_cron, siehe supabase/migration_cleanup.sql). Bewusst nicht
+  // awaited: darf den App-Start nicht verzögern, Fehler werden nur geloggt.
+  window.Db.cleanupOldFixtures().catch((err) =>
+    console.warn("Aufräumen alter Spiele fehlgeschlagen:", err)
+  );
+
   const state = {
     teams: [],
     team: null,

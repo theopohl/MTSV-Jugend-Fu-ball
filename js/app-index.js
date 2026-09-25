@@ -1,4 +1,11 @@
 (async function () {
+  // Sicherheitsnetz fürs automatische Aufräumen (Haupt-Job läuft serverseitig
+  // per pg_cron, siehe supabase/migration_cleanup.sql). Bewusst nicht
+  // awaited: darf den App-Start nicht verzögern, Fehler werden nur geloggt.
+  window.Db.cleanupOldFixtures().catch((err) =>
+    console.warn("Aufräumen alter Spiele fehlgeschlagen:", err)
+  );
+
   const state = {
     teams: [],
     team: null,
@@ -14,7 +21,10 @@
   const el = {
     teamChips: document.getElementById("teamChips"),
     typeChips: document.getElementById("typeChips"),
+    fixtureSelectField: document.getElementById("fixtureSelectField"),
     fixtureSelect: document.getElementById("fixtureSelect"),
+    weekendField: document.getElementById("weekendField"),
+    weekendDate: document.getElementById("weekendDate"),
     announceOptions: document.getElementById("announceOptions"),
     photoGrid: document.getElementById("photoGrid"),
     randomPhotoBtn: document.getElementById("randomPhotoBtn"),
@@ -31,6 +41,60 @@
 
   el.canvas.width = window.Renderer.W;
   el.canvas.height = window.Renderer.H;
+
+  // ---- Wochenübersicht: Datumshilfen ------------------------------------
+
+  function parseDateLocal(str) {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function toISODate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function nextSaturday() {
+    const d = new Date();
+    const diff = (6 - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  // Freitag–Sonntag der Woche, in der der übergebene Tag liegt (egal welcher
+  // Wochentag ausgewählt wurde).
+  function weekendRangeFor(dateStr) {
+    const d = parseDateLocal(dateStr);
+    const day = d.getDay(); // 0=So .. 6=Sa
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { friday: toISODate(friday), sunday: toISODate(sunday) };
+  }
+
+  const MONTHS = [
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember",
+  ];
+
+  function formatWeekendLabel(fridayStr, sundayStr) {
+    const f = parseDateLocal(fridayStr);
+    const s = parseDateLocal(sundayStr);
+    if (f.getMonth() === s.getMonth()) {
+      return `${f.getDate()}.–${s.getDate()}. ${MONTHS[f.getMonth()]}`;
+    }
+    return `${f.getDate()}. ${MONTHS[f.getMonth()]} – ${s.getDate()}. ${MONTHS[s.getMonth()]}`;
+  }
+
+  function weekdayLabel(dateStr) {
+    return parseDateLocal(dateStr).toLocaleDateString("de-DE", { weekday: "long" }).toUpperCase();
+  }
 
   async function loadTeams() {
     state.teams = await window.Db.getTeams();
@@ -63,13 +127,70 @@
       c.classList.toggle("active", c.dataset.type === type)
     );
     el.announceOptions.style.display = type === "ankuendigung" ? "" : "none";
-    loadFixtures();
+
+    const isWeekly = type === "wochenuebersicht";
+    el.teamChips.style.display = isWeekly ? "none" : "";
+    el.fixtureSelectField.style.display = isWeekly ? "none" : "";
+    el.weekendField.style.display = isWeekly ? "" : "none";
+
+    if (isWeekly) {
+      if (!el.weekendDate.value) el.weekendDate.value = toISODate(nextSaturday());
+      renderWeeklyOverview();
+    } else {
+      loadFixtures();
+    }
   }
 
   el.typeChips.addEventListener("click", (e) => {
     const chip = e.target.closest(".chip");
     if (chip) selectType(chip.dataset.type);
   });
+
+  el.weekendDate.addEventListener("change", () => {
+    if (state.postType === "wochenuebersicht") renderWeeklyOverview();
+  });
+
+  // ---- Wochenübersicht: Ansetzungen aller Teams für ein Wochenende -------
+
+  async function renderWeeklyOverview() {
+    if (!el.weekendDate.value) el.weekendDate.value = toISODate(nextSaturday());
+    const { friday, sunday } = weekendRangeFor(el.weekendDate.value);
+
+    if (!state.teams.length) state.teams = await window.Db.getTeams();
+    const perTeamFixtures = await Promise.all(state.teams.map((t) => window.Db.getFixtures(t.id)));
+
+    const games = [];
+    state.teams.forEach((team, i) => {
+      perTeamFixtures[i]
+        .filter((f) => f.status === "geplant" && f.date >= friday && f.date <= sunday)
+        .forEach((f) => {
+          games.push({
+            teamName: team.name,
+            opponentName: f.opponent ? f.opponent.name : "",
+            opponentLogo: f.opponent ? f.opponent.logo_url : null,
+            date: f.date,
+            kickoff: f.kickoff,
+            isHome: f.is_home,
+          });
+        });
+    });
+    games.sort((a, b) => `${a.date} ${a.kickoff || ""}`.localeCompare(`${b.date} ${b.kickoff || ""}`));
+
+    const renderGames = games.map((g) => ({
+      teamName: g.teamName,
+      opponentName: g.opponentName,
+      opponentLogo: g.opponentLogo,
+      dayLabel: weekdayLabel(g.date),
+      kickoff: window.Caption.formatTime(g.kickoff),
+      isHome: g.isHome,
+    }));
+
+    await window.Renderer.render(el.canvas, "wochenuebersicht", { games: renderGames });
+    el.captionOutput.value = window.Caption.buildWochenuebersicht({
+      weekendLabel: formatWeekendLabel(friday, sunday),
+      games: renderGames,
+    });
+  }
 
   async function loadFixtures() {
     if (!state.team) return;
@@ -106,7 +227,12 @@
   async function selectFixture(fixtureId) {
     state.fixture = state.fixtures.find((f) => f.id === fixtureId) || null;
     if (state.postType === "ankuendigung" && state.fixture) {
-      state.lastFixture = await window.Db.getLastPlayedFixture(state.team.id, state.fixture.date);
+      // Zuerst das gespeicherte letzte Ergebnis vom Team verwenden (bleibt
+      // erhalten, auch nachdem die zugehörige Fixture automatisch gelöscht
+      // wurde) – Live-Query nur als Fallback, falls es das (noch) nicht gibt.
+      state.lastFixture =
+        state.team.last_result ||
+        (await window.Db.getLastPlayedFixture(state.team.id, state.fixture.date));
     } else {
       state.lastFixture = null;
     }
@@ -204,37 +330,26 @@
     }
   }
 
+  // Löschen alter/erledigter Spiele passiert jetzt zeitbasiert automatisch
+  // (siehe js/db.js cleanupOldFixtures + supabase/migration_cleanup.sql) –
+  // der Download lädt hier nur noch die Datei herunter, ohne zu fragen oder
+  // etwas zu löschen.
   el.downloadBtn.addEventListener("click", () => {
-    el.canvas.toBlob(async (blob) => {
+    el.canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const teamSlug = state.team ? state.team.slug : "team";
-      const md = state.fixture ? state.fixture.matchday || "" : "";
+      let filename;
+      if (state.postType === "wochenuebersicht") {
+        filename = `mtsv-wochenuebersicht-${el.weekendDate.value || "termine"}.png`;
+      } else {
+        const teamSlug = state.team ? state.team.slug : "team";
+        const md = state.fixture ? state.fixture.matchday || "" : "";
+        filename = `mtsv-${teamSlug}-${state.postType}-spieltag${md}.png`;
+      }
       a.href = url;
-      a.download = `mtsv-${teamSlug}-${state.postType}-spieltag${md}.png`;
+      a.download = filename;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-      // Nach dem Download: Nur Ankündigungen werden aus dem Spielplan
-      // entfernt (das geplante Spiel wird ja nicht mehr gebraucht, sobald
-      // die Ankündigung raus ist). Ergebnis-Spiele bleiben bewusst
-      // gespeichert – die App braucht das zuletzt gespielte Ergebnis, um in
-      // der NÄCHSTEN Ankündigung automatisch darauf zurückzugreifen
-      // ("Nach dem 3:1-Sieg gegen X…").
-      if (state.fixture && state.postType === "ankuendigung") {
-        const opponentName = state.fixture.opponent ? state.fixture.opponent.name : "";
-        const confirmed = confirm(
-          `Ankündigung gegen ${opponentName} jetzt aus dem Spielplan entfernen?`
-        );
-        if (confirmed) {
-          try {
-            await window.sb.from("fixtures").delete().eq("id", state.fixture.id);
-            await loadFixtures();
-          } catch (err) {
-            console.error("Fehler beim Entfernen des Spiels:", err);
-          }
-        }
-      }
     }, "image/png");
   });
 
