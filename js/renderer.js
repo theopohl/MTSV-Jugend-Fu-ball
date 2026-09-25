@@ -21,7 +21,7 @@ window.Renderer = (function () {
       fontSize: 60,
       gapAfterBar: 28,
     },
-    metaLine: { centerX: 540, y: 512, fontSize: 30 },
+    metaLine: { centerX: 540, y: 512, fontSize: 38 },
     headline: { centerX: 540, y: 720, maxFontSize: 92, minFontSize: 46, maxWidthRatio: 0.86 },
     venueLine: { centerX: 540, y: 875, fontSize: 34 },
     score: { centerX: 540, centerY: 420, fontSize: 280 },

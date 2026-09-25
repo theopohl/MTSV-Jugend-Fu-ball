@@ -171,6 +171,10 @@
         .forEach((f) => {
           games.push({
             teamName: team.name,
+            // Reihenfolge innerhalb eines Tages: A- bis D-Jugend (Team-
+            // Reihenfolge aus getTeams(), alphabetisch sortiert), nicht die
+            // Anstoßzeit.
+            teamOrder: i,
             opponentName: f.opponent ? f.opponent.name : "",
             opponentLogo: f.opponent ? f.opponent.logo_url : null,
             date: f.date,
@@ -181,7 +185,7 @@
           });
         });
     });
-    games.sort((a, b) => `${a.date} ${a.kickoff || ""}`.localeCompare(`${b.date} ${b.kickoff || ""}`));
+    games.sort((a, b) => (a.date === b.date ? a.teamOrder - b.teamOrder : a.date.localeCompare(b.date)));
 
     const renderGames = games.map((g) => ({
       teamName: g.teamName,
