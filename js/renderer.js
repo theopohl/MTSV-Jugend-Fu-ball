@@ -545,25 +545,16 @@ window.Renderer = (function () {
       drawSmallCrest(ctx, leftLogo, crest1X, y, crestSize);
       drawSmallCrest(ctx, rightLogo, crest2X, y, crestSize);
 
-      // Team-Name + Gegner unter den Wappen – ohne den Team-Namen sähen alle
-      // Zeilen wegen des gemeinsamen MTSV-Logos identisch aus, und der
-      // Gegner war bisher gar nicht benannt.
-      const teamFontSize = clamp(rowHeight * 0.19, 16, 30);
-      const opponentFontSize = clamp(teamFontSize * 0.6, 12, 18);
+      // Team-Name unter den Wappen – ohne den sähen alle Zeilen wegen des
+      // gemeinsamen MTSV-Logos identisch aus.
+      const teamFontSize = clamp(rowHeight * 0.22, 20, 34);
       ctx.textAlign = "center";
       ctx.fillStyle = c.cream || "#E9EFE9";
       ctx.font = `700 ${teamFontSize}px ${FONTS.condensed}`;
       ctx.fillText(
         (g.teamName || "").toUpperCase(),
         (crest1X + crest2X) / 2,
-        y + crestSize / 2 + teamFontSize + 6
-      );
-      ctx.font = `600 ${opponentFontSize}px ${FONTS.condensed}`;
-      ctx.fillStyle = "rgba(255,255,255,0.75)";
-      ctx.fillText(
-        `vs. ${(g.opponentName || "").toUpperCase()}`,
-        (crest1X + crest2X) / 2,
-        y + crestSize / 2 + teamFontSize + opponentFontSize + 12
+        y + crestSize / 2 + teamFontSize + 8
       );
 
       const textX = crest2X + crestSize / 2 + 40;
@@ -582,6 +573,8 @@ window.Renderer = (function () {
     ctx.textAlign = "left";
   }
 
+  // Schrumpft die Schrift, bis der Gegnername in die verbleibende Breite
+  // passt (wie bei drawBigHeadline), statt abgeschnitten zu werden.
   function drawWeeklyDayTime(ctx, g, textX, y, rowHeight) {
     const dayFontSize = clamp(rowHeight * 0.4, 36, 64);
     const timeFontSize = clamp(dayFontSize * 0.68, 26, 44);
