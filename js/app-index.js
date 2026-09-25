@@ -128,7 +128,7 @@
     );
     el.announceOptions.style.display = type === "ankuendigung" ? "" : "none";
 
-    const isWeekly = type === "wochenuebersicht";
+    const isWeekly = type === "wochenuebersicht" || type === "wochenrueckblick";
     el.teamChips.style.display = isWeekly ? "none" : "";
     el.fixtureSelectField.style.display = isWeekly ? "none" : "";
     el.weekendField.style.display = isWeekly ? "" : "none";
@@ -147,14 +147,19 @@
   });
 
   el.weekendDate.addEventListener("change", () => {
-    if (state.postType === "wochenuebersicht") renderWeeklyOverview();
+    if (state.postType === "wochenuebersicht" || state.postType === "wochenrueckblick") {
+      renderWeeklyOverview();
+    }
   });
 
-  // ---- Wochenübersicht: Ansetzungen aller Teams für ein Wochenende -------
+  // ---- Wochenübersicht (geplant) / Wochenrückblick (gespielt): Sammel-Post
+  // aller Teams für ein Wochenende -----------------------------------------
 
   async function renderWeeklyOverview() {
     if (!el.weekendDate.value) el.weekendDate.value = toISODate(nextSaturday());
     const { friday, sunday } = weekendRangeFor(el.weekendDate.value);
+    const isRueckblick = state.postType === "wochenrueckblick";
+    const wantStatus = isRueckblick ? "gespielt" : "geplant";
 
     if (!state.teams.length) state.teams = await window.Db.getTeams();
     const perTeamFixtures = await Promise.all(state.teams.map((t) => window.Db.getFixtures(t.id)));
@@ -162,7 +167,7 @@
     const games = [];
     state.teams.forEach((team, i) => {
       perTeamFixtures[i]
-        .filter((f) => f.status === "geplant" && f.date >= friday && f.date <= sunday)
+        .filter((f) => f.status === wantStatus && f.date >= friday && f.date <= sunday)
         .forEach((f) => {
           games.push({
             teamName: team.name,
@@ -171,6 +176,8 @@
             date: f.date,
             kickoff: f.kickoff,
             isHome: f.is_home,
+            ownGoals: f.own_goals,
+            oppGoals: f.opp_goals,
           });
         });
     });
@@ -183,13 +190,20 @@
       dayLabel: weekdayLabel(g.date),
       kickoff: window.Caption.formatTime(g.kickoff),
       isHome: g.isHome,
+      ownGoals: g.ownGoals,
+      oppGoals: g.oppGoals,
     }));
 
-    await window.Renderer.render(el.canvas, "wochenuebersicht", { games: renderGames });
-    el.captionOutput.value = window.Caption.buildWochenuebersicht({
-      weekendLabel: formatWeekendLabel(friday, sunday),
-      games: renderGames,
-    });
+    await window.Renderer.render(el.canvas, state.postType, { games: renderGames });
+    el.captionOutput.value = isRueckblick
+      ? window.Caption.buildWochenrueckblick({
+          weekendLabel: formatWeekendLabel(friday, sunday),
+          games: renderGames,
+        })
+      : window.Caption.buildWochenuebersicht({
+          weekendLabel: formatWeekendLabel(friday, sunday),
+          games: renderGames,
+        });
   }
 
   async function loadFixtures() {
@@ -339,8 +353,8 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       let filename;
-      if (state.postType === "wochenuebersicht") {
-        filename = `mtsv-wochenuebersicht-${el.weekendDate.value || "termine"}.png`;
+      if (state.postType === "wochenuebersicht" || state.postType === "wochenrueckblick") {
+        filename = `mtsv-${state.postType}-${el.weekendDate.value || "termine"}.png`;
       } else {
         const teamSlug = state.team ? state.team.slug : "team";
         const md = state.fixture ? state.fixture.matchday || "" : "";

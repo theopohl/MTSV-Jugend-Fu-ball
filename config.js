@@ -40,7 +40,5 @@ window.APP_CONFIG = {
     jerseyGreen: "#0F3B26",
     cream: "#E9EFE9",
     sponsorBarDark: "#081E14",
-    // Für den "ANSETZUNGEN"-Schriftzug der Wochenübersicht.
-    accentRed: "#C0392B",
   },
 };

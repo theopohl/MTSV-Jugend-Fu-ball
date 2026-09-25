@@ -475,10 +475,12 @@ window.Renderer = (function () {
   }
 
   // -------------------------------------------------------------------------
-  // Wochenübersicht-Post: ein Sammel-Bild mit den Ansetzungen aller Teams.
+  // Wochen-Sammelposts: Ansetzungen (geplant) und Rückblick (gespielt) für
+  // alle Teams. Teilen sich Hintergrund/Überschrift/Zeilen-Layout, nur der
+  // rechte Zeileninhalt (Tag+Zeit bzw. Ergebnis) unterscheidet sich.
   // -------------------------------------------------------------------------
 
-  async function renderWochenuebersicht(ctx, data) {
+  async function drawWeeklyBackground(ctx) {
     const c = COLORS();
     const jersey = await safeLoadImage(window.APP_CONFIG.jerseyBg);
     if (jersey) {
@@ -489,72 +491,69 @@ window.Renderer = (function () {
       ctx.fillStyle = c.jerseyGreen || "#0F3B26";
       ctx.fillRect(0, 0, W, H);
     }
+  }
 
-    // Großer, vertikaler Schriftzug am linken Rand.
-    const accent = c.accentRed || "#C0392B";
-    ctx.save();
-    ctx.translate(108, H / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = accent;
-    ctx.font = `900 96px ${FONTS.black}`;
-    drawLetterSpaced(ctx, "ANSETZUNGEN", 0, 0, 12, "center");
-    ctx.restore();
+  // Große zentrierte Überschrift oben, mit kleinerem "JUGEND"-Kicker darüber
+  // (kein Team-Tag, keine rote Seitenbeschriftung).
+  function drawWeeklyHeadline(ctx, text) {
+    const c = COLORS();
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = `700 42px ${FONTS.condensed}`;
+    ctx.textAlign = "center";
+    drawLetterSpaced(ctx, "JUGEND", W / 2, 165, 6, "center");
+
+    ctx.font = `900 84px ${FONTS.black}`;
+    ctx.fillStyle = c.cream || "#E9EFE9";
+    drawLetterSpaced(ctx, text, W / 2, 250, 4, "center");
     ctx.textAlign = "left";
+  }
 
-    const games = data.games || [];
-    const listTop = 90;
+  // Wappen + Team-Name je Zeile, Zeilenhöhe/-größe passt sich der Anzahl der
+  // Spiele an (wie bei drawBigHeadline). drawRightContent(ctx, game, x, y,
+  // rowHeight) zeichnet den rechten Teil der Zeile (Tag/Zeit oder Ergebnis).
+  async function drawWeeklyRows(ctx, games, drawRightContent) {
+    const c = COLORS();
+    const listTop = 300;
     const listBottom = H - LAYOUT.sponsorBar.height - 40;
     const availableHeight = listBottom - listTop;
-    const listLeft = 230;
+    const listLeft = 90;
 
     if (!games.length) {
       ctx.fillStyle = "rgba(255,255,255,0.8)";
       ctx.font = `700 40px ${FONTS.condensed}`;
       ctx.textAlign = "center";
-      ctx.fillText("KEINE SPIELE IN DIESEM ZEITRAUM", (listLeft + W) / 2, H / 2);
+      ctx.fillText("KEINE SPIELE IN DIESEM ZEITRAUM", W / 2, H / 2);
       ctx.textAlign = "left";
-      await drawSponsorBar(ctx);
       return;
     }
 
     const ownLogo = await safeLoadImage(window.APP_CONFIG.club.logo);
     const opponentLogos = await Promise.all(games.map((g) => safeLoadImage(g.opponentLogo)));
-
-    // Zeilenhöhe/Schriftgrößen passen sich der Anzahl der Spiele an, damit
-    // 3 Zeilen genauso gut aussehen wie 8 (wie bei drawBigHeadline).
     const rowHeight = availableHeight / games.length;
 
     games.forEach((g, i) => {
       const y = listTop + rowHeight * (i + 0.5);
-      const crestSize = clamp(rowHeight * 0.6, 46, 118);
+      const crestSize = clamp(rowHeight * 0.62, 50, 130);
       const crest1X = listLeft + crestSize / 2;
-      const crest2X = crest1X + crestSize + 14;
+      const crest2X = crest1X + crestSize + 16;
 
       drawSmallCrest(ctx, ownLogo, crest1X, y, crestSize);
       drawSmallCrest(ctx, opponentLogos[i], crest2X, y, crestSize);
 
       // Team-Name unter den Wappen – ohne den sähen alle Zeilen wegen des
       // gemeinsamen MTSV-Logos identisch aus.
-      const teamFontSize = clamp(rowHeight * 0.15, 13, 20);
+      const teamFontSize = clamp(rowHeight * 0.22, 20, 34);
       ctx.textAlign = "center";
       ctx.fillStyle = c.cream || "#E9EFE9";
       ctx.font = `700 ${teamFontSize}px ${FONTS.condensed}`;
       ctx.fillText(
         (g.teamName || "").toUpperCase(),
         (crest1X + crest2X) / 2,
-        y + crestSize / 2 + teamFontSize + 6
+        y + crestSize / 2 + teamFontSize + 8
       );
 
-      const textX = crest2X + crestSize / 2 + 36;
-      const dayFontSize = clamp(rowHeight * 0.3, 26, 50);
-      const timeFontSize = dayFontSize * 0.6;
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = `900 ${dayFontSize}px ${FONTS.condensed}`;
-      ctx.fillText(g.dayLabel || "", textX, y - timeFontSize * 0.3);
-      ctx.font = `600 ${timeFontSize}px ${FONTS.condensed}`;
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.fillText(`${g.kickoff || ""} Uhr`, textX, y + dayFontSize * 0.55);
+      const textX = crest2X + crestSize / 2 + 40;
+      drawRightContent(ctx, g, textX, y, rowHeight);
 
       if (i < games.length - 1) {
         ctx.strokeStyle = "rgba(255,255,255,0.15)";
@@ -567,6 +566,46 @@ window.Renderer = (function () {
     });
 
     ctx.textAlign = "left";
+  }
+
+  function drawWeeklyDayTime(ctx, g, textX, y, rowHeight) {
+    const dayFontSize = clamp(rowHeight * 0.4, 36, 64);
+    const timeFontSize = clamp(dayFontSize * 0.68, 26, 44);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `900 ${dayFontSize}px ${FONTS.condensed}`;
+    ctx.fillText(g.dayLabel || "", textX, y - timeFontSize * 0.25);
+    ctx.font = `700 ${timeFontSize}px ${FONTS.condensed}`;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillText(`${g.kickoff || ""} Uhr`, textX, y + dayFontSize * 0.6);
+  }
+
+  function drawWeeklyScore(ctx, g, textX, y, rowHeight) {
+    let outcome = "REMIS";
+    if (g.ownGoals > g.oppGoals) outcome = "SIEG";
+    else if (g.ownGoals < g.oppGoals) outcome = "NIEDERLAGE";
+    const scoreFontSize = clamp(rowHeight * 0.46, 40, 72);
+    const outcomeFontSize = clamp(scoreFontSize * 0.32, 18, 26);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `900 ${scoreFontSize}px ${FONTS.condensed}`;
+    ctx.fillText(`${g.ownGoals}:${g.oppGoals}`, textX, y + scoreFontSize * 0.32);
+    ctx.font = `700 ${outcomeFontSize}px ${FONTS.condensed}`;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillText(outcome, textX, y + scoreFontSize * 0.32 + outcomeFontSize + 6);
+  }
+
+  async function renderWochenuebersicht(ctx, data) {
+    await drawWeeklyBackground(ctx);
+    drawWeeklyHeadline(ctx, "ANSETZUNGEN");
+    await drawWeeklyRows(ctx, data.games || [], drawWeeklyDayTime);
+    await drawSponsorBar(ctx);
+  }
+
+  async function renderWochenrueckblick(ctx, data) {
+    await drawWeeklyBackground(ctx);
+    drawWeeklyHeadline(ctx, "ERGEBNISSE");
+    await drawWeeklyRows(ctx, data.games || [], drawWeeklyScore);
     await drawSponsorBar(ctx);
   }
 
@@ -580,6 +619,8 @@ window.Renderer = (function () {
       await renderErgebnis(ctx, data);
     } else if (type === "wochenuebersicht") {
       await renderWochenuebersicht(ctx, data);
+    } else if (type === "wochenrueckblick") {
+      await renderWochenrueckblick(ctx, data);
     } else {
       await renderAnkuendigung(ctx, data);
     }

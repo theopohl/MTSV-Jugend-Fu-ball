@@ -267,6 +267,20 @@ window.Caption = (function () {
     return lines.join("\n");
   }
 
+  // Sammel-Post für die Ergebnisse eines Wochenendes – Gegenstück zu
+  // buildWochenuebersicht, rein additiv.
+  function buildWochenrueckblick({ weekendLabel, games }) {
+    const lines = [
+      `🏁 Unsere Ergebnisse${weekendLabel ? ` – ${weekendLabel}` : " vom Wochenende"}`,
+      "",
+    ];
+    (games || []).forEach((g) => {
+      lines.push(`⚽ ${g.teamName} ${g.ownGoals}:${g.oppGoals} ${g.opponentName}`);
+    });
+    lines.push("", "Weiter so! 💪", "", "#MTSVHohenwestedt #Jugendfussball #Amateurfussball #Hohenwestedt");
+    return lines.join("\n");
+  }
+
   return {
     formatDateShort,
     formatDateLong,
@@ -278,5 +292,6 @@ window.Caption = (function () {
     buildAnkuendigung,
     buildErgebnis,
     buildWochenuebersicht,
+    buildWochenrueckblick,
   };
 })();
