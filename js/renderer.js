@@ -590,7 +590,10 @@ window.Renderer = (function () {
 
     // Spielort rechts neben der Uhrzeit, mit Schrumpf-Schrift wie beim
     // Gegnernamen-Versuch, damit lange Ortsnamen nicht über den Rand laufen.
+    // Bei Auswärtsspielen mit "Bei:"-Präfix (gleiche Konvention wie bei
+    // Ankündigung/Ergebnis), bei Heimspielen nur der Ortsname.
     if (g.venue) {
+      const venueLabel = g.isHome === false ? `Bei: ${g.venue}` : g.venue;
       const timeWidth = ctx.measureText(timeLabel).width;
       const venueX = textX + timeWidth + 22;
       const maxWidth = Math.max(W - 64 - venueX, 50);
@@ -598,12 +601,12 @@ window.Renderer = (function () {
       const minSize = 14;
       while (venueSize > minSize) {
         ctx.font = `600 ${venueSize}px ${FONTS.condensed}`;
-        if (ctx.measureText(g.venue).width <= maxWidth) break;
+        if (ctx.measureText(venueLabel).width <= maxWidth) break;
         venueSize -= 2;
       }
       ctx.font = `600 ${venueSize}px ${FONTS.condensed}`;
       ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.fillText(g.venue, venueX, y + dayFontSize * 0.6);
+      ctx.fillText(venueLabel, venueX, y + dayFontSize * 0.6);
     }
   }
 
