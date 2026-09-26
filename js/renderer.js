@@ -582,9 +582,29 @@ window.Renderer = (function () {
     ctx.fillStyle = "#FFFFFF";
     ctx.font = `900 ${dayFontSize}px ${FONTS.condensed}`;
     ctx.fillText(g.dayLabel || "", textX, y - timeFontSize * 0.25);
+
     ctx.font = `700 ${timeFontSize}px ${FONTS.condensed}`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(`${g.kickoff || ""} Uhr`, textX, y + dayFontSize * 0.6);
+    const timeLabel = `${g.kickoff || ""} Uhr`;
+    ctx.fillText(timeLabel, textX, y + dayFontSize * 0.6);
+
+    // Spielort rechts neben der Uhrzeit, mit Schrumpf-Schrift wie beim
+    // Gegnernamen-Versuch, damit lange Ortsnamen nicht über den Rand laufen.
+    if (g.venue) {
+      const timeWidth = ctx.measureText(timeLabel).width;
+      const venueX = textX + timeWidth + 22;
+      const maxWidth = Math.max(W - 64 - venueX, 50);
+      let venueSize = clamp(timeFontSize * 0.85, 18, 32);
+      const minSize = 14;
+      while (venueSize > minSize) {
+        ctx.font = `600 ${venueSize}px ${FONTS.condensed}`;
+        if (ctx.measureText(g.venue).width <= maxWidth) break;
+        venueSize -= 2;
+      }
+      ctx.font = `600 ${venueSize}px ${FONTS.condensed}`;
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillText(g.venue, venueX, y + dayFontSize * 0.6);
+    }
   }
 
   function drawWeeklyScore(ctx, g, textX, y, rowHeight) {

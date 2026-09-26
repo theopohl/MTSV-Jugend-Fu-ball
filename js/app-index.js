@@ -180,6 +180,7 @@
             date: f.date,
             kickoff: f.kickoff,
             isHome: f.is_home,
+            venue: f.is_home ? f.venue || team.default_venue : f.venue || "",
             ownGoals: f.own_goals,
             oppGoals: f.opp_goals,
           });
@@ -194,6 +195,7 @@
       dayLabel: weekdayLabel(g.date),
       kickoff: window.Caption.formatTime(g.kickoff),
       isHome: g.isHome,
+      venue: g.venue,
       ownGoals: g.ownGoals,
       oppGoals: g.oppGoals,
     }));
