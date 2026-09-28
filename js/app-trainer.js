@@ -41,6 +41,8 @@
     opponentNamesList: document.getElementById("opponentNamesList"),
     opponentLogoLabel: document.getElementById("opponentLogoLabel"),
     newFixtureForm: document.getElementById("newFixtureForm"),
+    newFixtureType: document.getElementById("newFixtureType"),
+    newFixtureMatchdayField: document.getElementById("newFixtureMatchdayField"),
   };
 
   // selectedOpponentId === null bedeutet "+ neuer Gegner" ist aktiv.
@@ -411,24 +413,45 @@
     }
   });
 
+  // Testspiel/Pokal zählen nicht als Liga-Spieltag: keine Spieltag-Nr., und
+  // der Wettbewerb kommt NICHT automatisch vom Team (das würde immer den
+  // Liga-Wettbewerb zeigen, z. B. "Landesliga-Quali", auch bei einem
+  // Pokalspiel) – stattdessen greift ohne eigenen Wettbewerb der Fallback
+  // "Testspiel"/"Pokalspiel" aus caption.js/renderer.js.
+  function updateNewFixtureTypeMode() {
+    if (!el.newFixtureType || !el.newFixtureMatchdayField) return;
+    const isLiga = el.newFixtureType.value === "liga";
+    el.newFixtureMatchdayField.style.display = isLiga ? "" : "none";
+    const matchdayInput = el.newFixtureMatchdayField.querySelector("[name=matchday]");
+    if (matchdayInput) matchdayInput.required = isLiga;
+  }
+  if (el.newFixtureType) {
+    el.newFixtureType.addEventListener("change", updateNewFixtureTypeMode);
+    updateNewFixtureTypeMode();
+  }
+
   el.newFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.newFixtureForm);
     const opponent = await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
+    const type = fd.get("type") || "liga";
+    const isLiga = type === "liga";
     await window.Db.createFixture({
       team_id: state.team.id,
-      matchday: Number(fd.get("matchday")),
+      type,
+      matchday: isLiga ? Number(fd.get("matchday")) : null,
       opponent_id: opponent.id,
       date: fd.get("date"),
       kickoff: fd.get("kickoff"),
       venue: fd.get("venue") || (isHome ? state.team.default_venue : opponent.name),
       is_home: isHome,
-      competition: state.team.competition,
+      competition: isLiga ? state.team.competition : null,
       status: "geplant",
     });
     el.newFixtureForm.reset();
+    updateNewFixtureTypeMode();
     await refreshUpcoming();
     await refreshNextMatch();
   });
