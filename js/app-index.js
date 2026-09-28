@@ -34,6 +34,8 @@
     copyCaptionBtn: document.getElementById("copyCaptionBtn"),
     captionOutput: document.getElementById("captionOutput"),
     singleFixtureForm: document.getElementById("singleFixtureForm"),
+    singleFixtureType: document.getElementById("singleFixtureType"),
+    singleFixtureMatchdayField: document.getElementById("singleFixtureMatchdayField"),
     bulkImportInput: document.getElementById("bulkImportInput"),
     bulkImportBtn: document.getElementById("bulkImportBtn"),
     bulkImportResult: document.getElementById("bulkImportResult"),
@@ -397,24 +399,42 @@
     return created;
   }
 
+  // Testspiel/Pokal zählen nicht als Liga-Spieltag: keine Spieltag-Nr., und
+  // der Wettbewerb kommt NICHT automatisch vom Team (das würde immer den
+  // Liga-Wettbewerb zeigen, z. B. "Landesliga-Quali", auch bei einem
+  // Pokalspiel) – stattdessen greift ohne eigenen Wettbewerb der Fallback
+  // "Testspiel"/"Pokalspiel" aus caption.js/renderer.js.
+  function updateSingleFixtureTypeMode() {
+    const isLiga = el.singleFixtureType.value === "liga";
+    el.singleFixtureMatchdayField.style.display = isLiga ? "" : "none";
+    const matchdayInput = el.singleFixtureMatchdayField.querySelector("[name=matchday]");
+    if (matchdayInput) matchdayInput.required = isLiga;
+  }
+  el.singleFixtureType.addEventListener("change", updateSingleFixtureTypeMode);
+  updateSingleFixtureTypeMode();
+
   el.singleFixtureForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!state.team) return;
     const fd = new FormData(el.singleFixtureForm);
     const opponent = await getOrCreateOpponent(fd.get("opponent"));
     const isHome = fd.get("isHome") === "true";
+    const type = fd.get("type") || "liga";
+    const isLiga = type === "liga";
     await window.Db.createFixture({
       team_id: state.team.id,
-      matchday: Number(fd.get("matchday")),
+      type,
+      matchday: isLiga ? Number(fd.get("matchday")) : null,
       opponent_id: opponent.id,
       date: fd.get("date"),
       kickoff: fd.get("kickoff"),
       venue: fd.get("venue") || (isHome ? state.team.default_venue : opponent.name),
       is_home: isHome,
-      competition: state.team.competition,
+      competition: isLiga ? state.team.competition : null,
       status: "geplant",
     });
     el.singleFixtureForm.reset();
+    updateSingleFixtureTypeMode();
     await loadFixtures();
   });
 
@@ -429,6 +449,12 @@
       });
   }
 
+  const BULK_TYPE_MAP = { liga: "liga", testspiel: "testspiel", pokal: "pokal" };
+
+  function parseBulkType(raw) {
+    return BULK_TYPE_MAP[(raw || "liga").trim().toLowerCase()] || "liga";
+  }
+
   el.bulkImportBtn.addEventListener("click", async () => {
     if (!state.team) return;
     const rows = parseBulkRows(el.bulkImportInput.value);
@@ -436,18 +462,22 @@
     let failed = 0;
     for (const row of rows) {
       try {
-        const [matchday, opponentName, date, kickoff, venue, homeAway] = row;
+        const [matchday, opponentName, date, kickoff, venue, homeAway, typeRaw, competitionRaw] = row;
         const opponent = await getOrCreateOpponent(opponentName);
         const isHome = (homeAway || "H").toUpperCase().startsWith("H");
+        const type = parseBulkType(typeRaw);
+        const isLiga = type === "liga";
+        const competitionOverride = (competitionRaw || "").trim();
         await window.Db.createFixture({
           team_id: state.team.id,
-          matchday: Number(matchday),
+          type,
+          matchday: isLiga ? Number(matchday) : null,
           opponent_id: opponent.id,
           date,
           kickoff,
           venue: venue || (isHome ? state.team.default_venue : opponentName),
           is_home: isHome,
-          competition: state.team.competition,
+          competition: competitionOverride || (isLiga ? state.team.competition : null),
           status: "geplant",
         });
         ok++;
